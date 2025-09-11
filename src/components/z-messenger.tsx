@@ -25,6 +25,10 @@ interface ZMessengerProps {
   loggedInUser: User;
 }
 
+const getConversationId = (userId1: string, userId2: string) => {
+  return [userId1, userId2].sort().join('_');
+};
+
 export function ZMessenger({ loggedInUser }: ZMessengerProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [allUsers, setAllUsers] = useState<User[]>([]);
@@ -89,12 +93,10 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
   useEffect(() => {
     if (!selectedUser) return;
     
+    const conversationId = getConversationId(loggedInUser.id, selectedUser.id);
     const messagesQuery = query(
       collection(db, 'messages'),
-       or(
-        where('senderId', '==', loggedInUser.id),
-        where('senderId', '==', selectedUser.id)
-      ),
+      where('conversationId', '==', conversationId),
       orderBy('timestamp', 'asc')
     );
 
@@ -104,22 +106,17 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
       
       querySnapshot.forEach((doc) => {
         const data = doc.data();
-        if (
-          (data.senderId === loggedInUser.id && data.receiverId === selectedUser.id) ||
-          (data.senderId === selectedUser.id && data.receiverId === loggedInUser.id)
-        ) {
-           newMessages.push({
-             id: doc.id,
-             ...data,
-             timestamp: (data.timestamp as Timestamp).toDate(),
-             reactions: data.reactions || [],
-           } as Message);
+        newMessages.push({
+           id: doc.id,
+           ...data,
+           timestamp: (data.timestamp as Timestamp).toDate(),
+           reactions: data.reactions || [],
+         } as Message);
 
-           // Mark message as read
-           if (data.receiverId === loggedInUser.id && !data.read) {
-              batch.update(doc.ref, { read: true });
-           }
-        }
+         // Mark message as read
+         if (data.receiverId === loggedInUser.id && !data.read) {
+            batch.update(doc.ref, { read: true });
+         }
       });
       
       batch.commit().catch(console.error);
@@ -133,7 +130,9 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
   const handleSendMessage = async (content: string) => {
     if (!content.trim() || !selectedUser) return;
 
+    const conversationId = getConversationId(loggedInUser.id, selectedUser.id);
     await addDoc(collection(db, 'messages'), {
+      conversationId,
       senderId: loggedInUser.id,
       receiverId: selectedUser.id,
       content,
