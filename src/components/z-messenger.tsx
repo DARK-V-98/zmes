@@ -91,8 +91,10 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
     
     const messagesQuery = query(
       collection(db, 'messages'),
-      where('senderId', 'in', [loggedInUser.id, selectedUser.id]),
-      where('receiverId', 'in', [loggedInUser.id, selectedUser.id]),
+       or(
+        where('senderId', '==', loggedInUser.id),
+        where('senderId', '==', selectedUser.id)
+      ),
       orderBy('timestamp', 'asc')
     );
 
