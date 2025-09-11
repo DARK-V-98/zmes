@@ -14,9 +14,12 @@ import {
   addDoc,
   orderBy,
   doc,
+  writeBatch,
   getDocs,
   Timestamp,
+  or,
 } from 'firebase/firestore';
+import { useMediaQuery } from '@/hooks/use-media-query';
 
 interface ZMessengerProps {
   loggedInUser: User;
@@ -24,9 +27,13 @@ interface ZMessengerProps {
 
 export function ZMessenger({ loggedInUser }: ZMessengerProps) {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
+  const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [conversations, setConversations] = useState<User[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const isMobile = useMediaQuery('(max-width: 768px)');
+  const [view, setView] = useState<'sidebar' | 'chat'>('sidebar');
 
+  // Fetch all users for starting new conversations
   useEffect(() => {
     const usersQuery = query(collection(db, 'users'), where('uid', '!=', loggedInUser.id));
     const unsubscribe = onSnapshot(usersQuery, (querySnapshot) => {
@@ -39,39 +46,82 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
           avatar: data.photoURL || `https://picsum.photos/seed/${doc.id}/200/200`,
         });
       });
-      setUsers(usersData);
-      if (!selectedUser && usersData.length > 0) {
-        setSelectedUser(usersData[0]);
-      }
+      setAllUsers(usersData);
     });
     return () => unsubscribe();
-  }, [loggedInUser.id, selectedUser]);
+  }, [loggedInUser.id]);
   
+  // Fetch users with whom there are existing conversations
   useEffect(() => {
-    if (!selectedUser) return;
-
-    const q = query(
-        collection(db, 'messages'),
-        orderBy('timestamp', 'asc')
+    const messagesQuery = query(
+        collection(db, "messages"),
+        or(
+            where("senderId", "==", loggedInUser.id),
+            where("receiverId", "==", loggedInUser.id)
+        )
     );
 
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-        const newMessages: Message[] = [];
-        querySnapshot.forEach((doc) => {
+    const unsubscribe = onSnapshot(messagesQuery, (snapshot) => {
+        const userIds = new Set<string>();
+        snapshot.forEach(doc => {
             const data = doc.data();
-            if (
-              (data.senderId === loggedInUser.id && data.receiverId === selectedUser.id) ||
-              (data.senderId === selectedUser.id && data.receiverId === loggedInUser.id)
-            ) {
-              newMessages.push({
-                id: doc.id,
-                ...data,
-                timestamp: (data.timestamp as Timestamp).toDate(),
-                reactions: data.reactions || [],
-              } as Message);
+            if (data.senderId === loggedInUser.id) {
+                userIds.add(data.receiverId);
+            } else {
+                userIds.add(data.senderId);
             }
         });
-        setMessages(newMessages);
+
+        const conversationUsers = allUsers.filter(user => userIds.has(user.id));
+        setConversations(conversationUsers);
+        
+        if (!isMobile && !selectedUser && conversationUsers.length > 0) {
+           setSelectedUser(conversationUsers[0]);
+           setView('chat');
+        }
+    });
+
+    return () => unsubscribe();
+}, [loggedInUser.id, allUsers, selectedUser, isMobile]);
+
+
+  // Fetch messages for the selected conversation
+  useEffect(() => {
+    if (!selectedUser) return;
+    
+    const messagesQuery = query(
+      collection(db, 'messages'),
+      where('senderId', 'in', [loggedInUser.id, selectedUser.id]),
+      where('receiverId', 'in', [loggedInUser.id, selectedUser.id]),
+      orderBy('timestamp', 'asc')
+    );
+
+    const unsubscribe = onSnapshot(messagesQuery, (querySnapshot) => {
+      const newMessages: Message[] = [];
+      const batch = writeBatch(db);
+      
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        if (
+          (data.senderId === loggedInUser.id && data.receiverId === selectedUser.id) ||
+          (data.senderId === selectedUser.id && data.receiverId === loggedInUser.id)
+        ) {
+           newMessages.push({
+             id: doc.id,
+             ...data,
+             timestamp: (data.timestamp as Timestamp).toDate(),
+             reactions: data.reactions || [],
+           } as Message);
+
+           // Mark message as read
+           if (data.receiverId === loggedInUser.id && !data.read) {
+              batch.update(doc.ref, { read: true });
+           }
+        }
+      });
+      
+      batch.commit().catch(console.error);
+      setMessages(newMessages);
     });
 
     return () => unsubscribe();
@@ -93,14 +143,52 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
   
   const handleSelectUser = (user: User) => {
     setSelectedUser(user);
-    setMessages([]); // Clear messages while new ones are loading
+    setMessages([]);
+    if (isMobile) {
+      setView('chat');
+    }
+  }
+
+  const handleBackToSidebar = () => {
+    setView('sidebar');
+    setSelectedUser(null);
+  }
+
+  if (isMobile) {
+    return (
+       <div className="h-full">
+         <Card className="h-full flex rounded-none shadow-none border-0">
+           {view === 'sidebar' ? (
+             <Sidebar
+               users={conversations}
+               allUsers={allUsers}
+               messages={messages}
+               loggedInUser={loggedInUser}
+               selectedUser={selectedUser}
+               onSelectUser={handleSelectUser}
+             />
+           ) : selectedUser ? (
+             <Chat
+               key={selectedUser.id}
+               user={selectedUser}
+               loggedInUser={loggedInUser}
+               messages={messages}
+               onSendMessage={handleSendMessage}
+               onBack={handleBackToSidebar}
+               isMobile={isMobile}
+             />
+           ) : null }
+         </Card>
+       </div>
+    )
   }
 
   return (
     <div className="p-4 h-full">
       <Card className="h-full flex rounded-2xl shadow-lg">
         <Sidebar
-          users={users}
+          users={conversations}
+          allUsers={allUsers}
           messages={messages}
           loggedInUser={loggedInUser}
           selectedUser={selectedUser}
@@ -114,10 +202,11 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
               loggedInUser={loggedInUser}
               messages={messages}
               onSendMessage={handleSendMessage}
+              isMobile={isMobile}
             />
           ) : (
             <div className="flex h-full items-center justify-center bg-card">
-              <p>Select a user to start chatting</p>
+              <p>Select a conversation or start a new one</p>
             </div>
           )}
         </div>

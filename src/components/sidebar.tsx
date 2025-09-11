@@ -1,22 +1,72 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { Message, User } from '@/lib/data';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { ScrollArea } from './ui/scroll-area';
-import { Search } from 'lucide-react';
+import { MessageSquarePlus, Search } from 'lucide-react';
 import { Input } from './ui/input';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from './ui/dialog';
 
 interface SidebarProps {
   users: User[];
+  allUsers: User[];
   messages: Message[];
   loggedInUser: User;
   selectedUser: User | null;
   onSelectUser: (user: User) => void;
 }
 
-export function Sidebar({ users, messages, loggedInUser, selectedUser, onSelectUser }: SidebarProps) {
+const NewChatDialog = ({ users, onSelectUser, open, setOpen }: { users: User[], onSelectUser: (user: User) => void; open: boolean, setOpen: (open: boolean) => void; }) => {
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="ghost" size="icon" className="rounded-full">
+          <MessageSquarePlus />
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Start a new chat</DialogTitle>
+        </DialogHeader>
+        <div className="py-4">
+          <ScrollArea className="h-72">
+            {users.map(user => (
+              <Button
+                key={user.id}
+                variant="ghost"
+                className="w-full h-auto justify-start items-center p-3 text-left rounded-lg"
+                onClick={() => {
+                  onSelectUser(user);
+                  setOpen(false);
+                }}
+              >
+                <Avatar className="h-10 w-10 mr-4">
+                  <AvatarImage src={user.avatar} alt={user.name} />
+                  <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                </Avatar>
+                <p className="font-semibold truncate">{user.name}</p>
+              </Button>
+            ))}
+          </ScrollArea>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+
+export function Sidebar({ users, allUsers, messages, loggedInUser, selectedUser, onSelectUser }: SidebarProps) {
+  const [isNewChatOpen, setIsNewChatOpen] = useState(false);
+  const otherUsers = allUsers.filter(u => u.id !== loggedInUser.id);
+
   const conversations = users.map(user => {
     const userMessages = messages
       .filter(m => (m.senderId === user.id && m.receiverId === loggedInUser.id) || (m.senderId === loggedInUser.id && m.receiverId === user.id))
@@ -34,10 +84,13 @@ export function Sidebar({ users, messages, loggedInUser, selectedUser, onSelectU
   }).sort((a,b) => b.lastMessageTimestamp.getTime() - a.lastMessageTimestamp.getTime());
 
   return (
-    <div className="w-full max-w-xs border-r flex flex-col">
-      <div className="p-4 border-b">
+    <div className="w-full md:max-w-xs border-r flex flex-col">
+      <div className="p-4 border-b flex justify-between items-center">
         <h1 className="text-2xl font-bold font-headline">Z Messenger</h1>
-        <div className="relative mt-4">
+        <NewChatDialog users={otherUsers} onSelectUser={onSelectUser} open={isNewChatOpen} setOpen={setIsNewChatOpen}/>
+      </div>
+       <div className="p-4 border-b">
+        <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
           <Input placeholder="Search" className="pl-10" />
         </div>

@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Check, CheckCheck, MoreVertical, Paperclip, Send, SmilePlus } from 'lucide-react';
+import { Check, CheckCheck, MoreVertical, Paperclip, Send, SmilePlus, ArrowLeft } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { generateSmartReplies } from '@/app/actions';
 import { Skeleton } from './ui/skeleton';
@@ -18,10 +18,17 @@ interface ChatProps {
   loggedInUser: User;
   messages: Message[];
   onSendMessage: (content: string) => void;
+  onBack?: () => void;
+  isMobile: boolean;
 }
 
-const ChatHeader = ({ user }: { user: User }) => (
+const ChatHeader = ({ user, onBack, isMobile }: { user: User, onBack?: () => void, isMobile: boolean }) => (
   <div className="flex items-center p-4 border-b">
+    {isMobile && (
+        <Button variant="ghost" size="icon" className="mr-2" onClick={onBack}>
+          <ArrowLeft />
+        </Button>
+      )}
     <Avatar className="h-10 w-10 mr-4">
       <AvatarImage src={user.avatar} alt={user.name} data-ai-hint="profile picture" />
       <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
@@ -81,19 +88,20 @@ const ChatMessage = ({ message, isSender, sender }: { message: Message; isSender
         </Avatar>
         <div className={cn('relative flex flex-col max-w-xs md:max-w-md lg:max-w-lg', isSender && 'items-end')}>
             <div className={cn(
-                'px-4 py-2 rounded-2xl',
+                'px-4 py-2 rounded-2xl flex items-end gap-2',
                 isSender ? 'bg-primary text-primary-foreground rounded-br-none' : 'bg-card border rounded-bl-none'
             )}>
-                <p>{message.content}</p>
+                <p className="break-words">{message.content}</p>
                 {message.reactions.length > 0 && (
                     <div className="absolute -bottom-3 right-2 bg-card border rounded-full px-1.5 py-0.5 text-xs">
                         {message.reactions[0].emoji} {message.reactions.length}
                     </div>
                 )}
             </div>
-            <p className="text-xs text-muted-foreground mt-1 px-1">
-              {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            </p>
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1 px-1">
+              <span>{message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+              {isSender && <ReadStatus read={message.read} />}
+            </div>
         </div>
         <div className={cn("self-center transition-opacity duration-200", showPicker ? "opacity-100" : "opacity-0", isSender && "order-first")}>
             <EmojiPicker />
@@ -107,7 +115,7 @@ const ChatMessages = ({ messages, loggedInUser, allUsers }: { messages: Message[
   const usersMap = new Map(allUsers.map(user => [user.id, user]));
 
   useEffect(() => {
-    scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
+    scrollRef.current?.scrollIntoView({ behavior: 'auto' });
   }, [messages]);
 
   return (
@@ -173,8 +181,10 @@ const ChatInput = ({ onSendMessage }: { onSendMessage: (content: string) => void
   const [message, setMessage] = useState('');
   
   const handleSend = () => {
-    onSendMessage(message);
-    setMessage('');
+    if (message.trim()) {
+        onSendMessage(message);
+        setMessage('');
+    }
   };
   
   return (
@@ -207,7 +217,7 @@ const ChatInput = ({ onSendMessage }: { onSendMessage: (content: string) => void
   );
 };
 
-export function Chat({ user, loggedInUser, messages, onSendMessage }: ChatProps) {
+export function Chat({ user, loggedInUser, messages, onSendMessage, onBack, isMobile }: ChatProps) {
   const allUsers = [loggedInUser, user];
   const lastMessageFromOtherUser = messages
     .slice()
@@ -219,8 +229,8 @@ export function Chat({ user, loggedInUser, messages, onSendMessage }: ChatProps)
   };
 
   return (
-    <div className="flex h-full flex-col bg-card">
-      <ChatHeader user={user} />
+    <div className="flex h-full flex-col bg-card w-full">
+      <ChatHeader user={user} onBack={onBack} isMobile={isMobile} />
       <ChatMessages messages={messages} loggedInUser={loggedInUser} allUsers={allUsers} />
       <SmartReplies lastMessage={lastMessageFromOtherUser || null} onSelectReply={handleSelectReply}/>
       <ChatInput onSendMessage={onSendMessage} />
