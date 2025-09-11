@@ -1,7 +1,6 @@
 'use client';
 
 import { ZMessenger } from '@/components/z-messenger';
-import { users, messages } from '@/lib/data';
 import { useAuth } from '@/components/auth-provider';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
@@ -35,8 +34,6 @@ export default function Home() {
     <main className="h-screen bg-background text-foreground overflow-hidden">
       <ZMessenger
         loggedInUser={loggedInUser}
-        users={users}
-        initialMessages={messages}
       />
     </main>
   );

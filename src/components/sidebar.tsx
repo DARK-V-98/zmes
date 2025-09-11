@@ -12,7 +12,7 @@ interface SidebarProps {
   users: User[];
   messages: Message[];
   loggedInUser: User;
-  selectedUser: User;
+  selectedUser: User | null;
   onSelectUser: (user: User) => void;
 }
 
@@ -50,7 +50,7 @@ export function Sidebar({ users, messages, loggedInUser, selectedUser, onSelectU
               variant="ghost"
               className={cn(
                 'w-full h-auto justify-start items-center p-3 text-left rounded-lg transition-colors',
-                selectedUser.id === user.id && 'bg-secondary'
+                selectedUser?.id === user.id && 'bg-secondary'
               )}
               onClick={() => onSelectUser(user)}
             >
