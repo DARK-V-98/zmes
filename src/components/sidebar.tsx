@@ -25,6 +25,12 @@ interface SidebarProps {
 }
 
 const NewChatDialog = ({ users, onSelectUser, open, setOpen }: { users: User[], onSelectUser: (user: User) => void; open: boolean, setOpen: (open: boolean) => void; }) => {
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const filteredUsers = users.filter(user =>
+    user.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -36,9 +42,18 @@ const NewChatDialog = ({ users, onSelectUser, open, setOpen }: { users: User[], 
         <DialogHeader>
           <DialogTitle>Start a new chat</DialogTitle>
         </DialogHeader>
-        <div className="py-4">
+        <div className="py-4 space-y-4">
+           <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+            <Input
+              placeholder="Search by name"
+              className="pl-10"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
           <ScrollArea className="h-72">
-            {users.map(user => (
+            {filteredUsers.map(user => (
               <Button
                 key={user.id}
                 variant="ghost"
@@ -55,6 +70,11 @@ const NewChatDialog = ({ users, onSelectUser, open, setOpen }: { users: User[], 
                 <p className="font-semibold truncate">{user.name}</p>
               </Button>
             ))}
+             {filteredUsers.length === 0 && (
+              <div className="text-center text-muted-foreground py-10">
+                No users found.
+              </div>
+            )}
           </ScrollArea>
         </div>
       </DialogContent>
