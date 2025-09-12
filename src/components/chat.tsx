@@ -19,6 +19,7 @@ interface ChatProps {
   loggedInUser: User;
   messages: Message[];
   onSendMessage: (content: string) => void;
+  onUpdateReaction: (messageId: string, emoji: string) => void;
   onBack?: () => void;
   isMobile: boolean;
   isTyping: boolean;
@@ -69,7 +70,7 @@ const ReadStatus = ({ read }: { read: boolean }) => {
     return <Icon className={cn("h-4 w-4", read ? "text-accent" : "text-muted-foreground")} />;
 };
 
-const EmojiPicker = () => {
+const EmojiPicker = ({ onSelectEmoji }: { onSelectEmoji: (emoji: string) => void }) => {
   const emojis = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
   return (
     <Popover>
@@ -81,7 +82,13 @@ const EmojiPicker = () => {
       <PopoverContent className="w-auto p-1 rounded-full">
         <div className="flex gap-1">
           {emojis.map((emoji) => (
-            <Button key={emoji} variant="ghost" size="icon" className="h-8 w-8 rounded-full text-lg">
+            <Button 
+              key={emoji} 
+              variant="ghost" 
+              size="icon" 
+              className="h-8 w-8 rounded-full text-lg"
+              onClick={() => onSelectEmoji(emoji)}
+            >
               {emoji}
             </Button>
           ))}
@@ -91,7 +98,7 @@ const EmojiPicker = () => {
   );
 };
 
-const ChatMessage = ({ message, isSender, sender }: { message: Message; isSender: boolean; sender: User; }) => {
+const ChatMessage = ({ message, isSender, sender, onUpdateReaction }: { message: Message; isSender: boolean; sender: User; onUpdateReaction: (messageId: string, emoji: string) => void; }) => {
     const [showPicker, setShowPicker] = useState(false);
 
     return (
@@ -110,7 +117,7 @@ const ChatMessage = ({ message, isSender, sender }: { message: Message; isSender
                 isSender ? 'bg-primary text-primary-foreground rounded-br-none' : 'bg-card border rounded-bl-none'
             )}>
                 <p className="break-words">{message.content}</p>
-                {message.reactions.length > 0 && (
+                {message.reactions && message.reactions.length > 0 && (
                     <div className="absolute -bottom-3 right-2 bg-card border rounded-full px-1.5 py-0.5 text-xs">
                         {message.reactions[0].emoji} {message.reactions.length}
                     </div>
@@ -122,7 +129,7 @@ const ChatMessage = ({ message, isSender, sender }: { message: Message; isSender
             </div>
         </div>
         <div className={cn("self-center transition-opacity duration-200", showPicker ? "opacity-100" : "opacity-0", isSender && "order-first")}>
-            <EmojiPicker />
+            <EmojiPicker onSelectEmoji={(emoji) => onUpdateReaction(message.id, emoji)} />
         </div>
       </div>
     );
@@ -138,7 +145,7 @@ const TypingIndicator = () => (
 );
 
 
-const ChatMessages = ({ messages, loggedInUser, allUsers, isTyping }: { messages: Message[]; loggedInUser: User; allUsers: User[], isTyping: boolean }) => {
+const ChatMessages = ({ messages, loggedInUser, allUsers, isTyping, onUpdateReaction }: { messages: Message[]; loggedInUser: User; allUsers: User[], isTyping: boolean, onUpdateReaction: (messageId: string, emoji: string) => void; }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const usersMap = new Map(allUsers.map(user => [user.id, user]));
 
@@ -153,7 +160,7 @@ const ChatMessages = ({ messages, loggedInUser, allUsers, isTyping }: { messages
           const isSender = message.senderId === loggedInUser.id;
           const sender = isSender ? loggedInUser : usersMap.get(message.senderId)
           if (!sender) return null;
-          return <ChatMessage key={message.id} message={message} isSender={isSender} sender={sender} />;
+          return <ChatMessage key={message.id} message={message} isSender={isSender} sender={sender} onUpdateReaction={onUpdateReaction}/>;
         })}
         {isTyping && <TypingIndicator />}
       </div>
@@ -267,7 +274,7 @@ const ChatInput = ({ onSendMessage, onTyping }: { onSendMessage: (content: strin
   );
 };
 
-export function Chat({ user, loggedInUser, messages, onSendMessage, onBack, isMobile, isTyping, onTyping }: ChatProps) {
+export function Chat({ user, loggedInUser, messages, onSendMessage, onUpdateReaction, onBack, isMobile, isTyping, onTyping }: ChatProps) {
   const allUsers = [loggedInUser, user];
   const lastMessageFromOtherUser = messages
     .slice()
@@ -281,7 +288,7 @@ export function Chat({ user, loggedInUser, messages, onSendMessage, onBack, isMo
   return (
     <div className="flex h-full flex-col bg-card w-full">
       <ChatHeader user={user} onBack={onBack} isMobile={isMobile} />
-      <ChatMessages messages={messages} loggedInUser={loggedInUser} allUsers={allUsers} isTyping={isTyping}/>
+      <ChatMessages messages={messages} loggedInUser={loggedInUser} allUsers={allUsers} isTyping={isTyping} onUpdateReaction={onUpdateReaction} />
       <SmartReplies lastMessage={lastMessageFromOtherUser || null} onSelectReply={handleSelectReply}/>
       <ChatInput onSendMessage={onSendMessage} onTyping={onTyping} />
     </div>

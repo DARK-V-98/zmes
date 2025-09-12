@@ -19,6 +19,9 @@ import {
   serverTimestamp,
   updateDoc,
   setDoc,
+  getDoc,
+  arrayUnion,
+  arrayRemove,
 } from 'firebase/firestore';
 import { useMediaQuery } from '@/hooks/use-media-query';
 
@@ -198,6 +201,37 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
     });
   };
 
+  const handleUpdateReaction = async (messageId: string, emoji: string) => {
+    const messageRef = doc(db, 'messages', messageId);
+    const messageDoc = await getDoc(messageRef);
+    if (!messageDoc.exists()) return;
+
+    const messageData = messageDoc.data();
+    const existingReactions = (messageData.reactions || []) as {emoji: string, userId: string}[];
+    
+    const myReactionIndex = existingReactions.findIndex(r => r.userId === loggedInUser.id);
+
+    if (myReactionIndex > -1) {
+      // If I've already reacted
+      if (existingReactions[myReactionIndex].emoji === emoji) {
+        // and it's the same emoji, remove my reaction
+        await updateDoc(messageRef, {
+          reactions: arrayRemove(existingReactions[myReactionIndex])
+        });
+      } else {
+        // if it's a different emoji, update my reaction
+        const updatedReactions = [...existingReactions];
+        updatedReactions[myReactionIndex].emoji = emoji;
+        await updateDoc(messageRef, { reactions: updatedReactions });
+      }
+    } else {
+      // If I haven't reacted yet, add my reaction
+      await updateDoc(messageRef, {
+        reactions: arrayUnion({ emoji, userId: loggedInUser.id })
+      });
+    }
+  };
+
   const handleTyping = async (isTyping: boolean) => {
     if (!selectedUser) return;
     const conversationId = getConversationId(loggedInUser.id, selectedUser.id);
@@ -271,6 +305,7 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
                loggedInUser={loggedInUser}
                messages={currentChatMessages}
                onSendMessage={handleSendMessage}
+               onUpdateReaction={handleUpdateReaction}
                onBack={handleBackToSidebar}
                isMobile={isMobile}
                isTyping={isTyping}
@@ -311,6 +346,7 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
               loggedInUser={loggedInUser}
               messages={currentChatMessages}
               onSendMessage={handleSendMessage}
+              onUpdateReaction={handleUpdateReaction}
               isMobile={isMobile}
               isTyping={isTyping}
               onTyping={handleTyping}
