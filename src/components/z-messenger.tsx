@@ -55,6 +55,9 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const remoteStreamRef = useRef<MediaStream | null>(null);
+  
+  const [localStreamState, setLocalStreamState] = useState<MediaStream | null>(null);
+  const [remoteStreamState, setRemoteStreamState] = useState<MediaStream | null>(null);
 
   // Keep loggedInUser state in sync with AuthProvider and other users' state
   useEffect(() => {
@@ -161,7 +164,8 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
         }
     });
 
-    const conversationUsers = allUsers.filter(user => userIdsInConversations.has(user.id));
+    const allOtherUsers = allUsers.filter(user => user.id !== loggedInUser.id);
+    const conversationUsers = allOtherUsers.filter(user => userIdsInConversations.has(user.id));
     
     // Sort conversations by the timestamp of the last message
     return conversationUsers.sort((a, b) => {
@@ -285,22 +289,15 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
     const myReaction = existingReactions.find(r => r.userId === loggedInUser.id);
   
     if (myReaction) {
-      // If the reaction is the same, remove it
-      if (myReaction.emoji === emoji) {
+      await updateDoc(messageRef, {
+        reactions: arrayRemove(myReaction),
+      });
+      if (myReaction.emoji !== emoji) {
         await updateDoc(messageRef, {
-          reactions: arrayRemove(myReaction),
-        });
-      } else {
-        // If the reaction is different, change it by removing the old one first, then adding the new one
-        await updateDoc(messageRef, {
-          reactions: arrayRemove(myReaction),
-        });
-        await updateDoc(messageRef, {
-          reactions: arrayUnion({ emoji, userId: loggedInUser.id }),
+            reactions: arrayUnion({ emoji, userId: loggedInUser.id }),
         });
       }
     } else {
-      // If no reaction exists, add it
       await updateDoc(messageRef, {
         reactions: arrayUnion({ emoji, userId: loggedInUser.id }),
       });
@@ -347,20 +344,6 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
     setSelectedUser(user);
   }
 
-  // Effect to manage view state on mobile
-  useEffect(() => {
-    if (isMobile) {
-      if (selectedUser) {
-        // setView('chat');
-      } else {
-        // setView('sidebar');
-      }
-    } else {
-      // setView('chat'); // On desktop, we can always show chat view
-    }
-  }, [selectedUser, isMobile]);
-
-  
   const otherUsers = allUsers.filter(u => u.id !== loggedInUser.id);
   
   const currentChatMessages = selectedUser 
@@ -372,6 +355,9 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
       peerConnectionRef.current = pc;
       localStreamRef.current = local;
       remoteStreamRef.current = remote;
+      setLocalStreamState(local);
+      setRemoteStreamState(remote);
+      
       const callData: Call = { 
         caller: loggedInUser, 
         callee: userToCall, 
@@ -379,7 +365,6 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
       };
       setActiveCall(callData);
       
-      // Listen for connection state changes to transition to 'active'
       pc.onconnectionstatechange = () => {
         if (pc.connectionState === 'connected') {
           setActiveCall({...callData, status: 'active'});
@@ -397,6 +382,8 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
         peerConnectionRef.current = pc;
         localStreamRef.current = local;
         remoteStreamRef.current = remote;
+        setLocalStreamState(local);
+        setRemoteStreamState(remote);
         setActiveCall({ ...incomingCall, status: 'active' });
         setIncomingCall(null);
       });
@@ -418,6 +405,8 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
     setActiveCall(null);
     setIncomingCall(null);
     setCallId(null);
+    setLocalStreamState(null);
+    setRemoteStreamState(null);
   };
   
   const viewToShow = isMobile && !selectedUser ? 'sidebar' : 'chat';
@@ -428,7 +417,7 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
         { (viewToShow === 'sidebar' || !isMobile) &&
           <Sidebar
             conversations={conversations}
-            allUsers={otherUsers}
+            allUsers={allUsers.filter(u => u.id !== loggedInUser.id)}
             messages={messages}
             loggedInUser={loggedInUser}
             selectedUser={selectedUser}
@@ -469,6 +458,8 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
         onAccept={handleAcceptCall}
         onDecline={handleDeclineCall}
         onEnd={handleEndCall}
+        localStream={localStreamState}
+        remoteStream={remoteStreamState}
       />
     </div>
   );

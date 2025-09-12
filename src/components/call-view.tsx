@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { User } from '@/lib/data';
 import { Card, CardContent } from './ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
@@ -20,6 +20,8 @@ interface CallViewProps {
   onAccept: () => void;
   onDecline: () => void;
   onEnd: () => void;
+  localStream: MediaStream | null;
+  remoteStream: MediaStream | null;
 }
 
 const IncomingCall = ({ call, onAccept, onDecline }: { call: Call; onAccept: () => void; onDecline: () => void; }) => {
@@ -51,10 +53,24 @@ const IncomingCall = ({ call, onAccept, onDecline }: { call: Call; onAccept: () 
     );
 };
 
-const ActiveCall = ({ call, onEnd }: { call: Call; onEnd: () => void; }) => {
+const ActiveCall = ({ call, onEnd, localStream, remoteStream }: { call: Call; onEnd: () => void; localStream: MediaStream | null, remoteStream: MediaStream | null; }) => {
     const [isMuted, setIsMuted] = useState(false);
     const [duration, setDuration] = useState(0);
+    const localAudioRef = useRef<HTMLAudioElement>(null);
+    const remoteAudioRef = useRef<HTMLAudioElement>(null);
 
+    useEffect(() => {
+        if (localAudioRef.current && localStream) {
+            localAudioRef.current.srcObject = localStream;
+        }
+    }, [localStream]);
+
+    useEffect(() => {
+        if (remoteAudioRef.current && remoteStream) {
+            remoteAudioRef.current.srcObject = remoteStream;
+        }
+    }, [remoteStream]);
+    
     useEffect(() => {
         const timer = setInterval(() => {
             setDuration(prev => prev + 1);
@@ -68,10 +84,16 @@ const ActiveCall = ({ call, onEnd }: { call: Call; onEnd: () => void; }) => {
         return `${mins}:${secs}`;
     };
     
-    // Caller is the one who initiated, callee is the one who received
-    // The "other user" is the one who is not the current active user, but we don't have that info here.
-    // So we'll just show the callee's info as the main person in the call.
     const otherUser = call.callee;
+
+    const handleMuteToggle = () => {
+        if (localStream) {
+            localStream.getAudioTracks().forEach(track => {
+                track.enabled = !track.enabled;
+            });
+            setIsMuted(!isMuted);
+        }
+    };
 
     return (
         <div className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm flex items-center justify-center">
@@ -90,7 +112,7 @@ const ActiveCall = ({ call, onEnd }: { call: Call; onEnd: () => void; }) => {
                             variant="outline"
                             size="icon"
                             className={cn("rounded-full h-14 w-14", isMuted && "bg-primary text-primary-foreground")}
-                            onClick={() => setIsMuted(!isMuted)}
+                            onClick={handleMuteToggle}
                         >
                             {isMuted ? <MicOff /> : <Mic />}
                         </Button>
@@ -105,14 +127,16 @@ const ActiveCall = ({ call, onEnd }: { call: Call; onEnd: () => void; }) => {
                     </div>
                 </CardContent>
             </Card>
+            <audio ref={localAudioRef} autoPlay muted playsInline />
+            <audio ref={remoteAudioRef} autoPlay playsInline />
         </div>
     );
 };
 
 
-export function CallView({ activeCall, incomingCall, onAccept, onDecline, onEnd }: CallViewProps) {
+export function CallView({ activeCall, incomingCall, onAccept, onDecline, onEnd, localStream, remoteStream }: CallViewProps) {
     if (activeCall) {
-        return <ActiveCall call={activeCall} onEnd={onEnd} />;
+        return <ActiveCall call={activeCall} onEnd={onEnd} localStream={localStream} remoteStream={remoteStream} />;
     }
     if (incomingCall) {
         return <IncomingCall call={incomingCall} onAccept={onAccept} onDecline={onDecline} />;
