@@ -44,13 +44,15 @@ import {
 } from "@/components/ui/alert-dialog"
 
 interface SidebarProps {
-  users: User[];
+  conversations: User[];
   allUsers: User[];
   messages: Message[];
   loggedInUser: User;
   selectedUser: User | null;
   onSelectUser: (user: User) => void;
   onClearHistory: (userId: string) => void;
+  searchTerm: string;
+  onSearchTermChange: (term: string) => void;
 }
 
 const NewChatDialog = ({ users, onSelectUser, open, setOpen }: { users: User[], onSelectUser: (user: User) => void; open: boolean, setOpen: (open: boolean) => void; }) => {
@@ -63,9 +65,16 @@ const NewChatDialog = ({ users, onSelectUser, open, setOpen }: { users: User[], 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="icon" className="rounded-full">
-          <MessageSquarePlus />
-        </Button>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className="rounded-full">
+                <MessageSquarePlus />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>New Chat</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
@@ -137,6 +146,15 @@ const ProfileSettingsDialog = ({ user, open, setOpen }: { user: User; open: bool
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!name.trim()) {
+       toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Name cannot be empty.',
+      });
+      return;
+    }
+
     setLoading(true);
 
     const formData = new FormData();
@@ -207,6 +225,7 @@ const ProfileSettingsDialog = ({ user, open, setOpen }: { user: User; open: bool
             />
           </div>
           <DialogFooter>
+             <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
             <Button type="submit" disabled={loading}>
               {loading ? 'Saving...' : 'Save changes'}
             </Button>
@@ -355,9 +374,11 @@ const ConversationItem = ({
         </ContextMenuTrigger>
         <ContextMenuContent>
           <ContextMenuItem onClick={() => onSelectUser(user)}>Open Chat</ContextMenuItem>
-          <ContextMenuItem className="text-destructive" onClick={() => setIsAlertOpen(true)}>
-             <Trash2 className="mr-2 h-4 w-4" /> Delete Chat
-          </ContextMenuItem>
+          <AlertDialogTrigger asChild>
+            <ContextMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
+              <Trash2 className="mr-2 h-4 w-4" /> Delete Chat
+            </ContextMenuItem>
+          </AlertDialogTrigger>
         </ContextMenuContent>
       </ContextMenu>
        <AlertDialogContent>
@@ -377,12 +398,12 @@ const ConversationItem = ({
 };
 
 
-export function Sidebar({ users, allUsers, messages, loggedInUser, selectedUser, onSelectUser, onClearHistory }: SidebarProps) {
+export function Sidebar({ conversations, allUsers, messages, loggedInUser, selectedUser, onSelectUser, onClearHistory, searchTerm, onSearchTermChange }: SidebarProps) {
   const [isNewChatOpen, setIsNewChatOpen] = useState(false);
   const otherUsers = allUsers.filter(u => u.id !== loggedInUser.id);
   const { canInstall, install } = usePWAInstall();
 
-  const conversations = users.map(user => {
+  const conversationDetails = conversations.map(user => {
     const userMessages = messages
       .filter(m => !m.deletedFor?.includes(loggedInUser.id) && ((m.senderId === user.id && m.receiverId === loggedInUser.id) || (m.senderId === loggedInUser.id && m.receiverId === user.id)))
       .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
@@ -397,6 +418,10 @@ export function Sidebar({ users, allUsers, messages, loggedInUser, selectedUser,
       unreadCount,
     };
   }).sort((a,b) => b.lastMessageTimestamp.getTime() - a.lastMessageTimestamp.getTime());
+
+  const filteredConversations = conversationDetails.filter(({ user }) => 
+    user.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div className="w-full md:max-w-xs border-r flex flex-col">
@@ -421,12 +446,17 @@ export function Sidebar({ users, allUsers, messages, loggedInUser, selectedUser,
        <div className="p-4 border-b">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-          <Input placeholder="Search" className="pl-10" />
+          <Input 
+            placeholder="Search" 
+            className="pl-10" 
+            value={searchTerm}
+            onChange={(e) => onSearchTermChange(e.target.value)}
+          />
         </div>
       </div>
       <ScrollArea className="flex-1">
         <div className="p-2">
-          {conversations.map(({ user, lastMessage, unreadCount }) => (
+          {filteredConversations.length > 0 ? filteredConversations.map(({ user, lastMessage, unreadCount }) => (
             <ConversationItem
               key={user.id}
               user={user}
@@ -436,7 +466,11 @@ export function Sidebar({ users, allUsers, messages, loggedInUser, selectedUser,
               onSelectUser={onSelectUser}
               onClearHistory={onClearHistory}
             />
-          ))}
+          )) : (
+            <div className="text-center text-muted-foreground py-10">
+              {searchTerm ? 'No conversations found.' : 'No active conversations.'}
+            </div>
+          )}
         </div>
       </ScrollArea>
        <div className="p-2 border-t">

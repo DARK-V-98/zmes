@@ -198,30 +198,30 @@ const TypingIndicator = () => (
 
 
 const ChatMessages = ({ messages, loggedInUser, allUsers, isTyping, onUpdateReaction }: { messages: Message[]; loggedInUser: User; allUsers: User[], isTyping: boolean, onUpdateReaction: (messageId: string, emoji: string) => void; }) => {
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const viewportRef = useRef<HTMLDivElement>(null);
   const atBottomRef = useRef(true);
   const usersMap = new Map(allUsers.map(user => [user.id, user]));
 
   const handleScroll = () => {
-    const scrollEl = scrollAreaRef.current;
-    if (scrollEl) {
-      const { scrollTop, scrollHeight, clientHeight } = scrollEl;
-      // A little buffer for floating point inaccuracies
-      atBottomRef.current = scrollHeight - scrollTop - clientHeight < 10;
+    const viewport = viewportRef.current;
+    if (viewport) {
+      const { scrollTop, scrollHeight, clientHeight } = viewport;
+      const isAtBottom = scrollHeight - scrollTop - clientHeight < 10;
+      atBottomRef.current = isAtBottom;
     }
   };
 
   useEffect(() => {
-    const scrollEl = scrollAreaRef.current;
-    if (scrollEl && atBottomRef.current) {
-        scrollEl.scrollTop = scrollEl.scrollHeight;
+    const viewport = viewportRef.current;
+    if (viewport && atBottomRef.current) {
+        viewport.scrollTop = viewport.scrollHeight;
     }
   }, [messages, isTyping]);
-
+  
   const visibleMessages = messages.filter(m => !m.deletedFor?.includes(loggedInUser.id));
 
   return (
-    <ScrollArea className="flex-1 p-4" ref={scrollAreaRef} onScroll={handleScroll}>
+    <ScrollArea className="flex-1 p-4" viewportRef={viewportRef} onScroll={handleScroll}>
       <div className="space-y-4">
         {visibleMessages.length > 0 ? visibleMessages.map((message) => {
           const isSender = message.senderId === loggedInUser.id;
@@ -247,8 +247,13 @@ const SmartReplies = ({ lastMessage, onSelectReply }: { lastMessage: Message | n
   useEffect(() => {
     if (lastMessage) {
       startTransition(async () => {
-        const result = await generateSmartReplies(lastMessage.content);
-        setReplies(result);
+        try {
+          const result = await generateSmartReplies(lastMessage.content);
+          setReplies(result);
+        } catch (error) {
+          console.error("Failed to generate smart replies:", error);
+          setReplies([]);
+        }
       });
     } else {
       setReplies([]);

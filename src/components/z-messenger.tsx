@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import type { Message, User } from '@/lib/data';
 import { Sidebar } from '@/components/sidebar';
 import { Chat } from '@/components/chat';
@@ -39,25 +39,27 @@ const getConversationId = (userId1: string, userId2: string) => {
 export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [allUsers, setAllUsers] = useState<User[]>([]);
-  const [conversations, setConversations] = useState<User[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const isMobile = useMediaQuery('(max-width: 768px)');
-  const [view, setView] = useState<'sidebar' | 'chat'>(isMobile ? 'sidebar' : 'chat');
+  const [view, setView] = useState<'sidebar' | 'chat'>('sidebar');
   const [isTyping, setIsTyping] = useState(false);
   const { user: authUser } = useAuth();
   const [loggedInUser, setLoggedInUser] = useState(initialUser);
+  const [searchTerm, setSearchTerm] = useState('');
 
-  // Keep loggedInUser state in sync with AuthProvider
+  // Keep loggedInUser state in sync with AuthProvider and other users' state
   useEffect(() => {
     if (authUser) {
+      const authUserData = allUsers.find(u => u.id === authUser.uid);
       const updatedUser = {
         id: authUser.uid,
         name: authUser.displayName || 'You',
         avatar: authUser.photoURL || `https://picsum.photos/seed/${authUser.uid}/200/200`,
+        isOnline: authUserData?.isOnline,
       };
       setLoggedInUser(updatedUser);
     }
-  }, [authUser]);
+  }, [authUser, allUsers]);
 
 
   // User presence management
@@ -99,16 +101,19 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
         });
       });
       setAllUsers(usersData);
-      
+    });
+     return () => unsubscribeUsers();
+  }, []);
+
+  // Update selectedUser when allUsers list changes
+  useEffect(() => {
       if (selectedUser) {
-        const updatedSelectedUser = usersData.find(u => u.id === selectedUser.id);
+        const updatedSelectedUser = allUsers.find(u => u.id === selectedUser.id);
         if (updatedSelectedUser) {
             setSelectedUser(updatedSelectedUser);
         }
       }
-    });
-     return () => unsubscribeUsers();
-  }, [selectedUser]);
+  }, [allUsers, selectedUser]);
 
   // Fetch all messages for the logged-in user
   useEffect(() => {
@@ -138,46 +143,43 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
   }, [loggedInUser.id]);
 
 
-  // Update conversation list based on messages
-  useEffect(() => {
-      const userIds = new Set<string>();
-      messages.forEach(message => {
+  const conversations = useMemo(() => {
+    const userIdsInConversations = new Set<string>();
+    messages.forEach(message => {
         if (!message.deletedFor?.includes(loggedInUser.id)) {
             const otherUserId = message.senderId === loggedInUser.id ? message.receiverId : message.senderId;
-            userIds.add(otherUserId);
+            userIdsInConversations.add(otherUserId);
         }
-      });
+    });
 
-      const conversationUsers = allUsers.filter(user => userIds.has(user.id));
-      setConversations(conversationUsers);
-      
-      if (selectedUser && !userIds.has(selectedUser.id)) {
-        setSelectedUser(null);
-      }
+    return allUsers.filter(user => userIdsInConversations.has(user.id));
+  }, [messages, allUsers, loggedInUser.id]);
 
-      if (!isMobile && !selectedUser && conversationUsers.length > 0) {
-          const lastMessageTimestamps: {[key: string]: number} = {};
-          messages.forEach(msg => {
-              if (!msg.deletedFor?.includes(loggedInUser.id)) {
-                const timestamp = msg.timestamp.getTime();
-                const otherUserId = msg.senderId === loggedInUser.id ? msg.receiverId : msg.senderId;
-                if (!lastMessageTimestamps[otherUserId] || timestamp > lastMessageTimestamps[otherUserId]) {
-                    lastMessageTimestamps[otherUserId] = timestamp;
-                }
+  // Set initial user on desktop
+  useEffect(() => {
+    if (!isMobile && !selectedUser && conversations.length > 0) {
+        const lastMessageTimestamps: {[key: string]: number} = {};
+        messages.forEach(msg => {
+            if (!msg.deletedFor?.includes(loggedInUser.id)) {
+              const timestamp = msg.timestamp.getTime();
+              const otherUserId = msg.senderId === loggedInUser.id ? msg.receiverId : msg.senderId;
+              if (!lastMessageTimestamps[otherUserId] || timestamp > lastMessageTimestamps[otherUserId]) {
+                  lastMessageTimestamps[otherUserId] = timestamp;
               }
-          });
+            }
+        });
 
-          const sortedConversations = [...conversationUsers].sort((a, b) => {
-              const lastMessageA = lastMessageTimestamps[a.id] || 0;
-              const lastMessageB = lastMessageTimestamps[b.id] || 0;
-              return lastMessageB - lastMessageA;
-          });
+        const sortedConversations = [...conversations].sort((a, b) => {
+            const lastMessageA = lastMessageTimestamps[a.id] || 0;
+            const lastMessageB = lastMessageTimestamps[b.id] || 0;
+            return lastMessageB - lastMessageA;
+        });
 
-          if (sortedConversations.length > 0) {
-            setSelectedUser(sortedConversations[0]);
-          }
-      }
-  }, [messages, allUsers, loggedInUser.id, isMobile, selectedUser]);
+        if (sortedConversations.length > 0) {
+          setSelectedUser(sortedConversations[0]);
+        }
+    }
+  }, [conversations, isMobile, messages, loggedInUser.id, selectedUser]);
 
 
   // Mark messages as read
@@ -247,24 +249,19 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
     const myReaction = existingReactions.find(r => r.userId === loggedInUser.id);
   
     if (myReaction) {
-      // User has reacted before
       if (myReaction.emoji === emoji) {
-        // If the user is clicking the same emoji again, remove their reaction.
         await updateDoc(messageRef, {
           reactions: arrayRemove(myReaction),
         });
       } else {
-        // If the user is changing their reaction, first remove the old one...
         await updateDoc(messageRef, {
           reactions: arrayRemove(myReaction),
         });
-        // ...then add the new one. This needs to be a separate call.
         await updateDoc(messageRef, {
           reactions: arrayUnion({ emoji, userId: loggedInUser.id }),
         });
       }
     } else {
-      // If the user has not reacted yet, add the new reaction.
       await updateDoc(messageRef, {
         reactions: arrayUnion({ emoji, userId: loggedInUser.id }),
       });
@@ -286,6 +283,10 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
       });
     });
     await batch.commit();
+
+    if (selectedUser?.id === otherUserId) {
+        setSelectedUser(null);
+    }
   };
 
   const handleTyping = async (isTyping: boolean) => {
@@ -318,13 +319,9 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
   // Effect to manage view state on mobile
   useEffect(() => {
     if (isMobile) {
-      if (selectedUser) {
-        setView('chat');
-      } else {
-        setView('sidebar');
-      }
+      setView(selectedUser ? 'chat' : 'sidebar');
     } else {
-      setView('chat'); // On desktop, always show chat view
+      setView('chat'); 
     }
   }, [selectedUser, isMobile]);
 
@@ -339,17 +336,20 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
     return (
        <div className="h-full">
          <Card className="h-full flex rounded-none shadow-none border-0">
-           {view === 'sidebar' ? (
+           {view === 'sidebar' && (
              <Sidebar
-               users={conversations}
+               conversations={conversations}
                allUsers={otherUsers}
                messages={messages}
                loggedInUser={loggedInUser}
                selectedUser={selectedUser}
                onSelectUser={handleSelectUser}
                onClearHistory={handleClearHistory}
+               searchTerm={searchTerm}
+               onSearchTermChange={setSearchTerm}
              />
-           ) : selectedUser ? (
+           )}
+           {view === 'chat' && selectedUser && (
              <Chat
                key={selectedUser.id}
                user={selectedUser}
@@ -363,17 +363,7 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
                isTyping={isTyping}
                onTyping={handleTyping}
              />
-           ) : (
-            <Sidebar
-                users={conversations}
-                allUsers={otherUsers}
-                messages={messages}
-                loggedInUser={loggedInUser}
-                selectedUser={selectedUser}
-                onSelectUser={handleSelectUser}
-                onClearHistory={handleClearHistory}
-              />
-           ) }
+           )}
          </Card>
        </div>
     )
@@ -383,13 +373,15 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
     <div className="p-4 h-full">
       <Card className="h-full flex rounded-2xl shadow-lg">
         <Sidebar
-          users={conversations}
+          conversations={conversations}
           allUsers={otherUsers}
           messages={messages}
           loggedInUser={loggedInUser}
           selectedUser={selectedUser}
           onSelectUser={handleSelectUser}
           onClearHistory={handleClearHistory}
+          searchTerm={searchTerm}
+          onSearchTermChange={setSearchTerm}
         />
         <div className="flex-1 flex flex-col">
           {selectedUser ? (
@@ -407,7 +399,7 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
             />
           ) : (
             <div className="flex h-full items-center justify-center bg-card">
-              <p>Select a conversation or start a new one</p>
+              <p className="text-muted-foreground">Select a conversation or start a new one</p>
             </div>
           )}
         </div>
