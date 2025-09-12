@@ -19,6 +19,7 @@ import {
   serverTimestamp,
   updateDoc,
   setDoc,
+  or,
 } from 'firebase/firestore';
 import { useMediaQuery } from '@/hooks/use-media-query';
 
@@ -90,96 +91,79 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
     return () => unsubscribe();
   }, [selectedUser]);
   
-  // Fetch users with whom there are existing conversations
+  // Fetch conversations and messages
   useEffect(() => {
-    if (!loggedInUser.id || allUsers.length === 0) return;
+    if (!loggedInUser.id) return;
 
-    const messagesQuery = query(collection(db, "messages"));
-
-    const unsubscribe = onSnapshot(messagesQuery, (snapshot) => {
-        const userIds = new Set<string>();
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            if (data.senderId === loggedInUser.id) {
-                userIds.add(data.receiverId);
-            } else if (data.receiverId === loggedInUser.id) {
-                userIds.add(data.senderId);
-            }
-        });
-
-        const conversationUsers = allUsers.filter(user => userIds.has(user.id));
-        setConversations(conversationUsers);
-        
-        if (!isMobile && !selectedUser && conversationUsers.length > 0) {
-            const lastMessageTimestamps: {[key: string]: number} = {};
-             snapshot.docs.forEach(doc => {
-                const data = doc.data();
-                const timestamp = (data.timestamp as Timestamp)?.toDate().getTime() || 0;
-                const otherUserId = data.senderId === loggedInUser.id ? data.receiverId : data.senderId;
-                if (!lastMessageTimestamps[otherUserId] || timestamp > lastMessageTimestamps[otherUserId]) {
-                    lastMessageTimestamps[otherUserId] = timestamp;
-                }
-             });
-
-            const sortedConversations = conversationUsers.sort((a, b) => {
-                const lastMessageA = lastMessageTimestamps[a.id] || 0;
-                const lastMessageB = lastMessageTimestamps[b.id] || 0;
-                return lastMessageB - lastMessageA;
-            });
-            if (sortedConversations.length > 0) {
-              setSelectedUser(sortedConversations[0]);
-            }
-        }
-    });
-
-    return () => unsubscribe();
-}, [loggedInUser.id, allUsers, isMobile, selectedUser]);
-
-
-  // Fetch messages for the selected conversation
-  useEffect(() => {
-    if (!selectedUser || !loggedInUser.id) {
-        setMessages([]);
-        return;
-    };
-    
-    const conversationId = getConversationId(loggedInUser.id, selectedUser.id);
     const messagesQuery = query(
       collection(db, 'messages'),
-      where('conversationId', '==', conversationId),
+      or(
+        where('senderId', '==', loggedInUser.id),
+        where('receiverId', '==', loggedInUser.id)
+      ),
       orderBy('timestamp', 'asc')
     );
 
-    const unsubscribe = onSnapshot(messagesQuery, (querySnapshot) => {
-      const newMessages: Message[] = [];
+    const unsubscribe = onSnapshot(messagesQuery, (snapshot) => {
+      const userIds = new Set<string>();
+      const allMessages: Message[] = [];
       const batch = writeBatch(db);
       let hasUnread = false;
-      
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        newMessages.push({
-           id: doc.id,
-           ...data,
-           timestamp: (data.timestamp as Timestamp).toDate(),
-           reactions: data.reactions || [],
-         } as Message);
 
-         // Mark message as read
-         if (data.receiverId === loggedInUser.id && !data.read) {
-            batch.update(doc.ref, { read: true });
-            hasUnread = true;
-         }
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        const message = {
+          id: doc.id,
+          ...data,
+          timestamp: (data.timestamp as Timestamp)?.toDate() ?? new Date(),
+          reactions: data.reactions || [],
+        } as Message;
+        allMessages.push(message);
+
+        const otherUserId = data.senderId === loggedInUser.id ? data.receiverId : data.senderId;
+        userIds.add(otherUserId);
+        
+        // Mark message as read
+        if (selectedUser && data.receiverId === loggedInUser.id && data.senderId === selectedUser.id && !data.read) {
+           batch.update(doc.ref, { read: true });
+           hasUnread = true;
+        }
       });
       
       if (hasUnread) {
         batch.commit().catch(console.error);
       }
-      setMessages(newMessages);
+      
+      const conversationUsers = allUsers.filter(user => userIds.has(user.id));
+      setConversations(conversationUsers);
+      setMessages(allMessages);
+
+      if (!isMobile && !selectedUser && conversationUsers.length > 0) {
+        const lastMessageTimestamps: {[key: string]: number} = {};
+        allMessages.forEach(msg => {
+            const timestamp = msg.timestamp.getTime();
+            const otherUserId = msg.senderId === loggedInUser.id ? msg.receiverId : msg.senderId;
+            if (!lastMessageTimestamps[otherUserId] || timestamp > lastMessageTimestamps[otherUserId]) {
+                lastMessageTimestamps[otherUserId] = timestamp;
+            }
+        });
+
+        const sortedConversations = [...conversationUsers].sort((a, b) => {
+            const lastMessageA = lastMessageTimestamps[a.id] || 0;
+            const lastMessageB = lastMessageTimestamps[b.id] || 0;
+            return lastMessageB - lastMessageA;
+        });
+
+        if (sortedConversations.length > 0) {
+          setSelectedUser(sortedConversations[0]);
+        }
+      }
     });
 
     return () => unsubscribe();
-  }, [selectedUser, loggedInUser.id]);
-  
+  }, [loggedInUser.id, allUsers, isMobile, selectedUser]);
+
+
   // Typing status management
   useEffect(() => {
     if (!selectedUser || !loggedInUser.id) return;
@@ -190,6 +174,8 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
       const data = doc.data();
       if (data && data.typing) {
         setIsTyping(data.typing[selectedUser.id] || false);
+      } else {
+        setIsTyping(false);
       }
     });
 
@@ -257,6 +243,13 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
   }, [selectedUser, isMobile]);
   
   const otherUsers = allUsers.filter(u => u.id !== loggedInUser.id);
+  
+  const currentChatMessages = selectedUser 
+    ? messages.filter(m => 
+        (m.senderId === loggedInUser.id && m.receiverId === selectedUser.id) || 
+        (m.senderId === selectedUser.id && m.receiverId === loggedInUser.id)
+      ) 
+    : [];
 
   if (isMobile) {
     return (
@@ -276,7 +269,7 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
                key={selectedUser.id}
                user={selectedUser}
                loggedInUser={loggedInUser}
-               messages={messages}
+               messages={currentChatMessages}
                onSendMessage={handleSendMessage}
                onBack={handleBackToSidebar}
                isMobile={isMobile}
@@ -316,7 +309,7 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
               key={selectedUser.id}
               user={selectedUser}
               loggedInUser={loggedInUser}
-              messages={messages}
+              messages={currentChatMessages}
               onSendMessage={handleSendMessage}
               isMobile={isMobile}
               isTyping={isTyping}
