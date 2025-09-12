@@ -144,21 +144,29 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
 
       const userIds = new Set<string>();
       allMessages.forEach(message => {
-        const otherUserId = message.senderId === loggedInUser.id ? message.receiverId : message.senderId;
-        userIds.add(otherUserId);
+        if (!message.deletedFor?.includes(loggedInUser.id)) {
+            const otherUserId = message.senderId === loggedInUser.id ? message.receiverId : message.senderId;
+            userIds.add(otherUserId);
+        }
       });
 
       setAllUsers(currentAllUsers => {
           const conversationUsers = currentAllUsers.filter(user => userIds.has(user.id));
           setConversations(conversationUsers);
+          
+          if (selectedUser && !userIds.has(selectedUser.id)) {
+            setSelectedUser(null);
+          }
 
           if (!isMobile && !selectedUser && conversationUsers.length > 0) {
               const lastMessageTimestamps: {[key: string]: number} = {};
               allMessages.forEach(msg => {
-                  const timestamp = msg.timestamp.getTime();
-                  const otherUserId = msg.senderId === loggedInUser.id ? msg.receiverId : msg.senderId;
-                  if (!lastMessageTimestamps[otherUserId] || timestamp > lastMessageTimestamps[otherUserId]) {
-                      lastMessageTimestamps[otherUserId] = timestamp;
+                  if (!msg.deletedFor?.includes(loggedInUser.id)) {
+                    const timestamp = msg.timestamp.getTime();
+                    const otherUserId = msg.senderId === loggedInUser.id ? msg.receiverId : msg.senderId;
+                    if (!lastMessageTimestamps[otherUserId] || timestamp > lastMessageTimestamps[otherUserId]) {
+                        lastMessageTimestamps[otherUserId] = timestamp;
+                    }
                   }
               });
 
@@ -336,6 +344,7 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
                loggedInUser={loggedInUser}
                selectedUser={selectedUser}
                onSelectUser={handleSelectUser}
+               onClearHistory={handleClearHistory}
              />
            ) : selectedUser ? (
              <Chat
@@ -359,6 +368,7 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
                 loggedInUser={loggedInUser}
                 selectedUser={selectedUser}
                 onSelectUser={handleSelectUser}
+                onClearHistory={handleClearHistory}
               />
            ) }
          </Card>
@@ -376,6 +386,7 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
           loggedInUser={loggedInUser}
           selectedUser={selectedUser}
           onSelectUser={handleSelectUser}
+          onClearHistory={handleClearHistory}
         />
         <div className="flex-1 flex flex-col">
           {selectedUser ? (
