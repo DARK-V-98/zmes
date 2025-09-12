@@ -1,6 +1,8 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
+import { db } from '@/lib/firebase';
+import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 
 export type Mood = 'happy' | 'sad' | 'angry' | 'love' | 'surprised';
 
@@ -26,20 +28,33 @@ export function MoodProvider({ children }: { children: ReactNode }) {
   const [mood, setMoodState] = useState<Mood>('happy');
 
   useEffect(() => {
-    const storedMood = localStorage.getItem('app-mood') as Mood | null;
-    if (storedMood && THEME_MAP[storedMood]) {
-      setMoodState(storedMood);
-      document.body.className = THEME_MAP[storedMood];
-    } else {
-        document.body.className = THEME_MAP['happy'];
-    }
+    const moodDocRef = doc(db, 'settings', 'globalMood');
+    
+    const unsubscribe = onSnapshot(moodDocRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const newMood = docSnap.data().currentMood as Mood;
+        if (newMood && THEME_MAP[newMood]) {
+          setMoodState(newMood);
+          document.body.className = THEME_MAP[newMood];
+        }
+      } else {
+        // Set a default if it doesn't exist
+        setDoc(moodDocRef, { currentMood: 'happy' });
+      }
+    });
+
+    return () => unsubscribe();
   }, []);
 
-  const setMood = useCallback((newMood: Mood) => {
+  const setMood = useCallback(async (newMood: Mood) => {
     if (THEME_MAP[newMood]) {
-      localStorage.setItem('app-mood', newMood);
-      setMoodState(newMood);
-      document.body.className = THEME_MAP[newMood];
+      const moodDocRef = doc(db, 'settings', 'globalMood');
+      try {
+        await setDoc(moodDocRef, { currentMood: newMood });
+        // The onSnapshot listener will handle the state update and theme change
+      } catch (error) {
+        console.error("Failed to update global mood:", error);
+      }
     }
   }, []);
   
