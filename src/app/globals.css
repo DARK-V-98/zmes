@@ -87,19 +87,19 @@
     --card-foreground: 340 10% 25%;
     --popover: 0 0% 100%;
     --popover-foreground: 340 10% 25%;
-    --primary: 340 82% 60%;
+    --primary: 207 70% 53%;
     --primary-foreground: 0 0% 98%;
     --secondary: 340 30% 92%;
     --secondary-foreground: 340 10% 25%;
     --muted: 340 30% 92%;
     --muted-foreground: 340 10% 50%;
-    --accent: 290 70% 65%;
+    --accent: 145 63% 49%;
     --accent-foreground: 0 0% 98%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
     --border: 340 30% 90%;
     --input: 340 30% 90%;
-    --ring: 340 82% 60%;
+    --ring: 207 70% 53%;
   }
 
   .theme-surprised {
