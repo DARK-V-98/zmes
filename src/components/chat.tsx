@@ -77,7 +77,7 @@ const ChatHeader = ({ user, onBack, isMobile, onClearHistory, onStartCall }: { u
   return (
     <div className="flex items-center p-2 sm:p-4 border-b bg-card z-10">
       {isMobile && (
-          <Button variant="ghost" size="icon" className="mr-2" onClick={onBack}>
+          <Button variant="ghost" size="icon" className="mr-2 h-8 w-8" onClick={onBack}>
             <ArrowLeft />
           </Button>
         )}
@@ -95,7 +95,7 @@ const ChatHeader = ({ user, onBack, isMobile, onClearHistory, onStartCall }: { u
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" onClick={() => onStartCall(user)}>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onStartCall(user)}>
               <Phone />
             </Button>
           </TooltipTrigger>
@@ -105,7 +105,7 @@ const ChatHeader = ({ user, onBack, isMobile, onClearHistory, onStartCall }: { u
       <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" className="h-8 w-8">
               <MoreVertical />
             </Button>
           </DropdownMenuTrigger>
@@ -394,12 +394,13 @@ const SmartReplies = ({ lastMessage, onSelectReply }: { lastMessage: Message | n
   );
 };
 
-const ChatInput = ({ onSendMessage, onUpdateMessage, onTyping, editingMessage, onCancelEdit }: { 
+const ChatInput = ({ onSendMessage, onUpdateMessage, onTyping, editingMessage, onCancelEdit, loggedInUser }: { 
     onSendMessage: (content: string) => void;
     onUpdateMessage: (messageId: string, newContent: string) => void;
     onTyping: (isTyping: boolean) => void;
     editingMessage: Message | null;
     onCancelEdit: () => void;
+    loggedInUser: User;
 }) => {
   const [message, setMessage] = useState('');
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -460,7 +461,7 @@ const ChatInput = ({ onSendMessage, onUpdateMessage, onTyping, editingMessage, o
               </Button>
           </div>
       )}
-      <div className="relative">
+      <div className="relative flex items-center gap-2">
         <Input
           ref={inputRef}
           value={message}
@@ -544,6 +545,7 @@ export function Chat({ user, loggedInUser, messages, onSendMessage, onUpdateMess
             onTyping={onTyping} 
             editingMessage={editingMessage}
             onCancelEdit={handleCancelEdit}
+            loggedInUser={loggedInUser}
         />
       </div>
     </div>
