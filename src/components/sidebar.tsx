@@ -24,6 +24,7 @@ import { useRouter } from 'next/navigation';
 import { Label } from './ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { updateUserProfile } from '@/app/actions';
+import Image from 'next/image';
 
 interface SidebarProps {
   users: User[];
@@ -264,7 +265,7 @@ export function Sidebar({ users, allUsers, messages, loggedInUser, selectedUser,
   return (
     <div className="w-full md:max-w-xs border-r flex flex-col">
       <div className="p-4 border-b flex justify-between items-center">
-        <h1 className="text-2xl font-bold font-headline">Z Messenger</h1>
+        <Image src="/zm.png" alt="Z Messenger Logo" width={120} height={30} />
         <div className="flex items-center gap-1">
           {canInstall && (
             <TooltipProvider>
