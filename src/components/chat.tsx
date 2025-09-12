@@ -172,11 +172,11 @@ const ChatMessage = ({
           <div className={cn('flex flex-col max-w-[85%] sm:max-w-[80%]', isSender ? 'items-end' : 'items-start')}>
               <div className="relative">
                 <div className={cn(
-                  'px-3 py-2 sm:px-4 rounded-2xl overflow-hidden',
+                  'px-3 py-2 sm:px-4 rounded-2xl',
                   isSender ? 'bg-primary text-primary-foreground rounded-br-none' : 'bg-card border rounded-bl-none',
                   message.isDeleted && 'italic text-muted-foreground'
                 )}>
-                  <p className="break-words text-sm sm:text-base">{message.content}</p>
+                  <p className="break-words overflow-wrap-anywhere text-sm sm:text-base">{message.content}</p>
                   {message.reactions && message.reactions.length > 0 && (
                     <div className="absolute -bottom-3 right-2 bg-card border rounded-full px-1.5 py-0.5 text-xs">
                       {message.reactions[0].emoji} {message.reactions.length}
