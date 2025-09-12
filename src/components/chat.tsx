@@ -7,11 +7,12 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Check, CheckCheck, MoreVertical, Paperclip, Send, SmilePlus, ArrowLeft } from 'lucide-react';
+import { Check, CheckCheck, MoreVertical, Paperclip, Send, SmilePlus, ArrowLeft, Download } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { generateSmartReplies } from '@/app/actions';
 import { Skeleton } from './ui/skeleton';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { usePWAInstall } from './pwa-install-provider';
 
 interface ChatProps {
   user: User;
@@ -24,29 +25,44 @@ interface ChatProps {
   onTyping: (isTyping: boolean) => void;
 }
 
-const ChatHeader = ({ user, onBack, isMobile }: { user: User, onBack?: () => void, isMobile: boolean }) => (
-  <div className="flex items-center p-4 border-b">
-    {isMobile && (
-        <Button variant="ghost" size="icon" className="mr-2" onClick={onBack}>
-          <ArrowLeft />
-        </Button>
-      )}
-    <Avatar className="h-10 w-10 mr-4">
-      <AvatarImage src={user.avatar} alt={user.name} data-ai-hint="profile picture" />
-      <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-    </Avatar>
-    <div className="flex-1">
-      <p className="font-semibold">{user.name}</p>
-      <div className="flex items-center gap-1.5">
-        <span className={cn("h-2.5 w-2.5 rounded-full", user.isOnline ? "bg-accent" : "bg-gray-400")}></span>
-        <span className="text-xs text-muted-foreground">{user.isOnline ? 'Online' : 'Offline'}</span>
+const ChatHeader = ({ user, onBack, isMobile }: { user: User, onBack?: () => void, isMobile: boolean }) => {
+  const { canInstall, install } = usePWAInstall();
+  return (
+    <div className="flex items-center p-4 border-b">
+      {isMobile && (
+          <Button variant="ghost" size="icon" className="mr-2" onClick={onBack}>
+            <ArrowLeft />
+          </Button>
+        )}
+      <Avatar className="h-10 w-10 mr-4">
+        <AvatarImage src={user.avatar} alt={user.name} data-ai-hint="profile picture" />
+        <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+      </Avatar>
+      <div className="flex-1">
+        <p className="font-semibold">{user.name}</p>
+        <div className="flex items-center gap-1.5">
+          <span className={cn("h-2.5 w-2.5 rounded-full", user.isOnline ? "bg-accent" : "bg-gray-400")}></span>
+          <span className="text-xs text-muted-foreground">{user.isOnline ? 'Online' : 'Offline'}</span>
+        </div>
       </div>
+       {canInstall && (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" onClick={install}>
+                <Download />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Install App</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
+      <Button variant="ghost" size="icon">
+        <MoreVertical />
+      </Button>
     </div>
-    <Button variant="ghost" size="icon">
-      <MoreVertical />
-    </Button>
-  </div>
-);
+  );
+};
 
 const ReadStatus = ({ read }: { read: boolean }) => {
     const Icon = read ? CheckCheck : Check;

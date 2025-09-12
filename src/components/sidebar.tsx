@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { ScrollArea } from './ui/scroll-area';
-import { MessageSquarePlus, Search } from 'lucide-react';
+import { MessageSquarePlus, Search, Download } from 'lucide-react';
 import { Input } from './ui/input';
 import {
   Dialog,
@@ -14,6 +14,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from './ui/dialog';
+import { usePWAInstall } from './pwa-install-provider';
+import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from './ui/tooltip';
 
 interface SidebarProps {
   users: User[];
@@ -89,6 +91,7 @@ const NewChatDialog = ({ users, onSelectUser, open, setOpen }: { users: User[], 
 export function Sidebar({ users, allUsers, messages, loggedInUser, selectedUser, onSelectUser }: SidebarProps) {
   const [isNewChatOpen, setIsNewChatOpen] = useState(false);
   const otherUsers = allUsers.filter(u => u.id !== loggedInUser.id);
+  const { canInstall, install } = usePWAInstall();
 
   const conversations = users.map(user => {
     const userMessages = messages
@@ -110,7 +113,21 @@ export function Sidebar({ users, allUsers, messages, loggedInUser, selectedUser,
     <div className="w-full md:max-w-xs border-r flex flex-col">
       <div className="p-4 border-b flex justify-between items-center">
         <h1 className="text-2xl font-bold font-headline">Z Messenger</h1>
-        <NewChatDialog users={otherUsers} onSelectUser={onSelectUser} open={isNewChatOpen} setOpen={setIsNewChatOpen}/>
+        <div className="flex items-center gap-1">
+          {canInstall && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" className="rounded-full" onClick={install}>
+                    <Download />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Install App</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+          <NewChatDialog users={otherUsers} onSelectUser={onSelectUser} open={isNewChatOpen} setOpen={setIsNewChatOpen}/>
+        </div>
       </div>
        <div className="p-4 border-b">
         <div className="relative">
