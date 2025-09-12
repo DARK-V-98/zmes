@@ -265,7 +265,7 @@ export function Sidebar({ users, allUsers, messages, loggedInUser, selectedUser,
   return (
     <div className="w-full md:max-w-xs border-r flex flex-col">
       <div className="p-4 border-b flex justify-between items-center">
-        <Image src="/zm.png" alt="Z Messenger Logo" width={120} height={30} />
+        <Image src="/zm.png" alt="Z Messenger Logo" width={100} height={25} />
         <div className="flex items-center gap-1">
           {canInstall && (
             <TooltipProvider>
