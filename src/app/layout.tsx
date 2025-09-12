@@ -3,6 +3,7 @@ import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { AuthProvider } from '@/components/auth-provider';
 import { PWAInstallProvider } from '@/components/pwa-install-provider';
+import { MoodProvider } from '@/components/mood-provider';
 
 export const metadata: Metadata = {
   title: 'Z Messenger',
@@ -33,8 +34,10 @@ export default function RootLayout({
       <body className="font-body antialiased">
         <AuthProvider>
           <PWAInstallProvider>
-            {children}
-            <Toaster />
+            <MoodProvider>
+              {children}
+              <Toaster />
+            </MoodProvider>
           </PWAInstallProvider>
         </AuthProvider>
       </body>

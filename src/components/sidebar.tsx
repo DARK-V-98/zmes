@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { ScrollArea } from './ui/scroll-area';
-import { MessageSquarePlus, Search, Download, Settings, Camera, LogOut, User as UserIcon } from 'lucide-react';
+import { MessageSquarePlus, Search, Download, Settings, Camera, LogOut, User as UserIcon, Smile } from 'lucide-react';
 import { Input } from './ui/input';
 import {
   Dialog,
@@ -25,6 +25,7 @@ import { Label } from './ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { updateUserProfile } from '@/app/actions';
 import Image from 'next/image';
+import { Mood, useMood } from './mood-provider';
 
 interface SidebarProps {
   users: User[];
@@ -199,6 +200,50 @@ const ProfileSettingsDialog = ({ user, open, setOpen }: { user: User; open: bool
   );
 };
 
+const MoodChanger = () => {
+  const { setMood } = useMood();
+  const moods: { mood: Mood; emoji: string }[] = [
+    { mood: 'happy', emoji: '😄' },
+    { mood: 'love', emoji: '❤️' },
+    { mood: 'surprised', emoji: '😮' },
+    { mood: 'angry', emoji: '😡' },
+    { mood: 'sad', emoji: '😢' },
+  ];
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="ghost" className="w-full justify-start">
+          <Smile className="mr-2 h-4 w-4" /> Set Mood
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-2">
+        <div className="flex gap-2">
+          {moods.map(({ mood, emoji }) => (
+            <TooltipProvider key={mood}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-2xl rounded-full"
+                    onClick={() => setMood(mood)}
+                  >
+                    {emoji}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{mood.charAt(0).toUpperCase() + mood.slice(1)}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+};
+
 
 const UserMenu = ({ user }: { user: User }) => {
     const router = useRouter();
@@ -229,6 +274,7 @@ const UserMenu = ({ user }: { user: User }) => {
                         <Button variant="ghost" className="w-full justify-start" onClick={() => setIsSettingsOpen(true)}>
                            <UserIcon className="mr-2 h-4 w-4" /> Edit Profile
                         </Button>
+                        <MoodChanger />
                         <Button variant="ghost" className="w-full justify-start" onClick={handleLogout}>
                             <LogOut className="mr-2 h-4 w-4" /> Logout
                         </Button>
