@@ -18,6 +18,7 @@ import {
   Timestamp,
   serverTimestamp,
   updateDoc,
+  setDoc,
 } from 'firebase/firestore';
 import { useMediaQuery } from '@/hooks/use-media-query';
 
@@ -42,17 +43,22 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
   useEffect(() => {
     if (!loggedInUser.id) return;
     const userRef = doc(db, 'users', loggedInUser.id);
-    updateDoc(userRef, { isOnline: true, lastSeen: serverTimestamp() });
+    
+    const updateUserPresence = (isOnline: boolean) => {
+        setDoc(userRef, { isOnline, lastSeen: serverTimestamp() }, { merge: true });
+    };
+
+    updateUserPresence(true);
 
     const handleBeforeUnload = () => {
-      updateDoc(userRef, { isOnline: false, lastSeen: serverTimestamp() });
+        updateUserPresence(false);
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
 
     return () => {
-      updateDoc(userRef, { isOnline: false, lastSeen: serverTimestamp() });
-      window.removeEventListener('beforeunload', handleBeforeUnload);
+        updateUserPresence(false);
+        window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, [loggedInUser.id]);
 
@@ -211,13 +217,13 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
     const conversationId = getConversationId(loggedInUser.id, selectedUser.id);
     const conversationRef = doc(db, 'conversations', conversationId);
     try {
-        await updateDoc(conversationRef, {
+        await setDoc(conversationRef, {
             typing: {
                 [loggedInUser.id]: isTyping
             }
-        });
+        }, { merge: true });
     } catch (error) {
-       // If the doc doesn't exist, this will fail. We can ignore it.
+       console.error("Error updating typing status:", error)
     }
   }
   
