@@ -8,12 +8,11 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Check, CheckCheck, MoreVertical, Paperclip, Send, SmilePlus, ArrowLeft, Download, Trash2, Phone, Share } from 'lucide-react';
+import { Check, CheckCheck, MoreVertical, Paperclip, Send, SmilePlus, ArrowLeft, Trash2, Phone, Share } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { generateSmartReplies } from '@/app/actions';
 import { Skeleton } from './ui/skeleton';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
-import { usePWAInstall } from './pwa-install-provider';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -66,22 +65,7 @@ const IOSInstallInstructions = ({ open, onOpenChange }: { open: boolean, onOpenC
 );
 
 const ChatHeader = ({ user, onBack, isMobile, onClearHistory, onStartCall }: { user: User, onBack?: () => void, isMobile: boolean, onClearHistory: () => void, onStartCall: (user: User) => void }) => {
-  const { canInstall, install } = usePWAInstall();
   const [isAlertOpen, setIsAlertOpen] = useState(false);
-  const [isInstallSheetOpen, setIsInstallSheetOpen] = useState(false);
-  
-  const isIos = () => /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
-  const isMobileDevice = () => isMobile || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-  
-  const showInstallButton = canInstall || isMobileDevice();
-  
-  const handleInstallClick = () => {
-    if (canInstall) {
-      install();
-    } else if (isIos() || isMobileDevice()) {
-      setIsInstallSheetOpen(true);
-    }
-  };
 
   const handleClearHistory = () => {
     onClearHistory();
@@ -116,18 +100,6 @@ const ChatHeader = ({ user, onBack, isMobile, onClearHistory, onStartCall }: { u
           <TooltipContent>Start audio call</TooltipContent>
         </Tooltip>
       </TooltipProvider>
-       {showInstallButton && (
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" onClick={handleInstallClick}>
-                <Download />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Install App</TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      )}
       <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -157,7 +129,6 @@ const ChatHeader = ({ user, onBack, isMobile, onClearHistory, onStartCall }: { u
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      <IOSInstallInstructions open={isInstallSheetOpen} onOpenChange={setIsInstallSheetOpen} />
     </div>
   );
 };
