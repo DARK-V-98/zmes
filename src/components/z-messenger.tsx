@@ -432,7 +432,7 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
   
   return (
     <div className="h-full relative">
-      <Card className="h-full flex md:rounded-2xl shadow-lg overflow-hidden">
+      <Card className="h-full flex shadow-lg overflow-hidden">
         { (viewToShow === 'sidebar' || !isMobile) &&
           <Sidebar
             conversations={conversations}

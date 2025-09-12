@@ -44,7 +44,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { useMediaQuery } from '@/hooks/use-media-query';
 
 interface SidebarProps {
   conversations: User[];
@@ -91,18 +90,18 @@ const NewChatDialog = ({ users, onSelectUser }: { users: User[], onSelectUser: (
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="rounded-full">
-                    <MessageSquarePlus />
-                </Button>
-            </TooltipTrigger>
-            <TooltipContent>New Chat</TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      </DialogTrigger>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DialogTrigger asChild>
+              <Button variant="ghost" size="icon" className="rounded-full">
+                  <MessageSquarePlus />
+              </Button>
+            </DialogTrigger>
+          </TooltipTrigger>
+          <TooltipContent>New Chat</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Start a new chat</DialogTitle>
@@ -434,7 +433,6 @@ export function Sidebar({ conversations, allUsers, messages, loggedInUser, selec
   const otherUsers = allUsers.filter(u => u.id !== loggedInUser.id);
   const { canInstall, install } = usePWAInstall();
   const [isInstallSheetOpen, setIsInstallSheetOpen] = useState(false);
-  const isMobile = useMediaQuery('(max-width: 768px)');
   
   const isIos = () => /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
   const isMobileDevice = () => /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -471,7 +469,7 @@ export function Sidebar({ conversations, allUsers, messages, loggedInUser, selec
   );
 
   return (
-    <div className="w-full md:w-96 border-r flex flex-col">
+    <div className="w-full md:w-[350px] lg:w-[400px] border-r flex flex-col">
       <div className="p-4 border-b flex justify-between items-center">
         <Image src="/zm.png" alt="Z Messenger Logo" width={100} height={25} className="rounded-lg" />
         <div className="flex items-center gap-1">
