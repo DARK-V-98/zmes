@@ -5,6 +5,7 @@ import { useAuth } from '@/components/auth-provider';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import type { User } from '@/lib/data';
+import Image from 'next/image';
 
 export default function Home() {
   const { user, loading } = useAuth();
@@ -19,7 +20,9 @@ export default function Home() {
   if (loading || !user) {
     return (
       <main className="h-screen bg-background text-foreground flex items-center justify-center">
-        <p>Loading...</p>
+        <div className="animate-pulse">
+          <Image src="/zm.png" alt="Z Messenger Logo" width={120} height={30} className="rounded-lg" />
+        </div>
       </main>
     );
   }
