@@ -368,7 +368,7 @@ const ChatMessages = ({ messages, loggedInUser, allUsers, isTyping, onUpdateReac
 
   return (
     <ScrollArea className="flex-1" viewportRef={viewportRef} onScroll={handleScroll}>
-      <div className="p-2 sm:p-4">
+      <div className="p-4">
         {visibleMessages.length > 0 ? visibleMessages.map((message) => {
           const isSender = message.senderId === loggedInUser.id;
           const sender = isSender ? loggedInUser : usersMap.get(message.senderId)
