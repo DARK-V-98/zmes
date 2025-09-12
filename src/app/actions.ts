@@ -2,7 +2,7 @@
 import { getSmartReplySuggestions } from '@/ai/flows/smart-reply-suggestions';
 import { auth, db, storage } from '@/lib/firebase';
 import { updateProfile } from 'firebase/auth';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, setDoc } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadString } from 'firebase/storage';
 
 export async function generateSmartReplies(message: string) {
@@ -51,6 +51,31 @@ export async function updateUserProfile(formData: FormData) {
 
   } catch (error: any) {
     console.error('Error updating profile:', error);
+    return { success: false, message: error.message };
+  }
+}
+
+export async function updateChatBackground(conversationId: string, image: string) {
+  const user = auth.currentUser;
+  if (!user) {
+    throw new Error('You must be logged in to update your profile.');
+  }
+  
+  if (!image) {
+    throw new Error('No image provided.');
+  }
+
+  try {
+    const storageRef = ref(storage, `backgrounds/${conversationId}`);
+    await uploadString(storageRef, image, 'data_url');
+    const backgroundUrl = await getDownloadURL(storageRef);
+
+    const conversationRef = doc(db, 'conversations', conversationId);
+    await setDoc(conversationRef, { backgroundUrl }, { merge: true });
+
+    return { success: true, message: 'Chat background updated successfully.' };
+  } catch (error: any) {
+    console.error('Error updating chat background:', error);
     return { success: false, message: error.message };
   }
 }

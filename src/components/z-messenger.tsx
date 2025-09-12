@@ -51,6 +51,7 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
   const [activeCall, setActiveCall] = useState<Call | null>(null);
   const [incomingCall, setIncomingCall] = useState<Call | null>(null);
   const [callId, setCallId] = useState<string | null>(null);
+  const [conversationBackgrounds, setConversationBackgrounds] = useState<Map<string, string>>(new Map());
 
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
@@ -167,14 +168,29 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
     const allOtherUsers = allUsers.filter(user => user.id !== loggedInUser.id);
     const conversationUsers = allOtherUsers.filter(user => userIdsInConversations.has(user.id));
     
-    // Sort conversations by the timestamp of the last message
-    return conversationUsers.sort((a, b) => {
-        const lastMessageA = messages.filter(m => (m.senderId === a.id || m.receiverId === a.id) && !m.deletedFor?.includes(loggedInUser.id)).pop()?.timestamp.getTime() || 0;
-        const lastMessageB = messages.filter(m => (m.senderId === b.id || m.receiverId === b.id) && !m.deletedFor?.includes(loggedInUser.id)).pop()?.timestamp.getTime() || 0;
-        return lastMessageB - lastMessageA;
-    });
+    return conversationUsers;
 
   }, [messages, allUsers, loggedInUser.id]);
+
+  // Listen for conversation metadata (backgrounds, etc.)
+  useEffect(() => {
+    if (conversations.length === 0 || !loggedInUser.id) return;
+
+    const conversationIds = conversations.map(c => getConversationId(loggedInUser.id, c.id));
+    
+    const unsubscribes = conversationIds.map(id => {
+        const convRef = doc(db, 'conversations', id);
+        return onSnapshot(convRef, (doc) => {
+            const data = doc.data();
+            if (data?.backgroundUrl) {
+                setConversationBackgrounds(prev => new Map(prev).set(id, data.backgroundUrl));
+            }
+        });
+    });
+
+    return () => unsubscribes.forEach(unsub => unsub());
+
+  }, [conversations, loggedInUser.id]);
 
 
   // Set initial user on desktop
@@ -346,9 +362,9 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
 
   const otherUsers = allUsers.filter(u => u.id !== loggedInUser.id);
   
-  const currentChatMessages = selectedUser 
+  const currentChatMessages = useMemo(() => selectedUser 
     ? messages.filter(m => m.conversationId === getConversationId(loggedInUser.id, selectedUser.id)) 
-    : [];
+    : [], [selectedUser, messages, loggedInUser.id]);
   
   const handleStartCall = async (userToCall: User) => {
     const newCallId = await startCall(loggedInUser, userToCall, (pc, local, remote) => {
@@ -411,13 +427,16 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
   
   const viewToShow = isMobile && !selectedUser ? 'sidebar' : 'chat';
   
+  const conversationId = selectedUser ? getConversationId(loggedInUser.id, selectedUser.id) : '';
+  const backgroundUrl = conversationId ? conversationBackgrounds.get(conversationId) || null : null;
+  
   return (
-    <div className="h-full relative md:p-4">
+    <div className="h-full relative">
       <Card className="h-full flex md:rounded-2xl shadow-lg overflow-hidden">
         { (viewToShow === 'sidebar' || !isMobile) &&
           <Sidebar
             conversations={conversations}
-            allUsers={allUsers.filter(u => u.id !== loggedInUser.id)}
+            allUsers={otherUsers}
             messages={messages}
             loggedInUser={loggedInUser}
             selectedUser={selectedUser}
@@ -443,6 +462,8 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
                 isTyping={isTyping}
                 onTyping={handleTyping}
                 onStartCall={handleStartCall}
+                conversationId={conversationId}
+                backgroundUrl={backgroundUrl}
               />
             ) : (
               <div className="hidden md:flex h-full items-center justify-center bg-card">
