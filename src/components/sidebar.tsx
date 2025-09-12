@@ -57,17 +57,21 @@ interface SidebarProps {
   onSearchTermChange: (term: string) => void;
 }
 
-const NewChatDialog = ({ users, onSelectUser }: { users: User[], onSelectUser: (user: User) => void; }) => {
+const NewChatDialog = ({ users, conversations, onSelectUser }: { users: User[], conversations: User[], onSelectUser: (user: User) => void; }) => {
   const [open, setOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
-  const filteredUsers = users.filter(user =>
+  const conversationUserIds = new Set(conversations.map(c => c.id));
+  const availableUsers = users.filter(user => !conversationUserIds.has(user.id));
+
+  const filteredUsers = availableUsers.filter(user =>
     user.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
   
   const handleSelect = (user: User) => {
     onSelectUser(user);
     setOpen(false);
+    setSearchTerm('');
   }
 
   return (
@@ -444,7 +448,7 @@ export function Sidebar({ conversations, allUsers, messages, loggedInUser, selec
               </Tooltip>
             </TooltipProvider>
           )}
-          <NewChatDialog users={otherUsers} onSelectUser={onSelectUser} />
+          <NewChatDialog users={otherUsers} conversations={conversations} onSelectUser={onSelectUser} />
         </div>
       </div>
        <div className="p-4 border-b">
