@@ -309,7 +309,7 @@ const ChatMessage = ({ message, isSender, sender, onUpdateReaction }: { message:
           <AvatarImage src={sender.avatar} alt={sender.name} data-ai-hint="profile picture" />
           <AvatarFallback>{sender.name.charAt(0)}</AvatarFallback>
         </Avatar>
-        <div className={cn('relative flex flex-col max-w-[80%] sm:max-w-[70%]', isSender && 'items-end')}>
+        <div className={cn('relative flex flex-col max-w-[85%]', isSender && 'items-end')}>
             <div className={cn(
                 'px-4 py-2 rounded-2xl flex items-end gap-2',
                 isSender ? 'bg-primary text-primary-foreground rounded-br-none' : 'bg-card border rounded-bl-none'
@@ -368,7 +368,7 @@ const ChatMessages = ({ messages, loggedInUser, allUsers, isTyping, onUpdateReac
 
   return (
     <ScrollArea className="flex-1" viewportRef={viewportRef} onScroll={handleScroll}>
-      <div className="space-y-4 p-4">
+      <div className="p-4">
         {visibleMessages.length > 0 ? visibleMessages.map((message) => {
           const isSender = message.senderId === loggedInUser.id;
           const sender = isSender ? loggedInUser : usersMap.get(message.senderId)
