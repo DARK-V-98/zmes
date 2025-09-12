@@ -200,33 +200,37 @@ const ChatMessage = ({ message, isSender, sender, onUpdateReaction }: { message:
 
     return (
       <div
-        className={cn('group flex items-start gap-2 sm:gap-3 my-3 sm:my-4', isSender && 'flex-row-reverse')}
+        className={cn('group w-full my-3 sm:my-4', isSender && 'flex justify-end')}
         onMouseEnter={() => setShowPicker(true)}
         onMouseLeave={() => setShowPicker(false)}
       >
-        <Avatar className="h-8 w-8 sm:h-10 sm:w-10">
-          <AvatarImage src={sender.avatar} alt={sender.name} data-ai-hint="profile picture" />
-          <AvatarFallback>{sender.name.charAt(0)}</AvatarFallback>
-        </Avatar>
-        <div className={cn('relative max-w-[85%] sm:max-w-[80%]', isSender && 'items-end')}>
-            <div className={cn(
-                'px-3 py-2 sm:px-4 rounded-2xl gap-2',
-                isSender ? 'bg-primary text-primary-foreground rounded-br-none' : 'bg-card border rounded-bl-none'
-            )}>
-                <p className="break-words text-sm sm:text-base">{message.content}</p>
-                {message.reactions && message.reactions.length > 0 && (
-                    <div className="absolute -bottom-3 right-2 bg-card border rounded-full px-1.5 py-0.5 text-xs">
-                        {message.reactions[0].emoji} {message.reactions.length}
+        <div className={cn('flex gap-2 sm:gap-3', isSender && 'flex-row-reverse')}>
+            <Avatar className="h-8 w-8 sm:h-10 sm:w-10 self-end">
+                <AvatarImage src={sender.avatar} alt={sender.name} data-ai-hint="profile picture" />
+                <AvatarFallback>{sender.name.charAt(0)}</AvatarFallback>
+            </Avatar>
+            <div className={cn('flex flex-col', isSender && 'items-end')}>
+                <div className={cn('relative max-w-[85%] sm:max-w-[80%]')}>
+                    <div className={cn(
+                        'px-3 py-2 sm:px-4 rounded-2xl',
+                        isSender ? 'bg-primary text-primary-foreground rounded-br-none' : 'bg-card border rounded-bl-none'
+                    )}>
+                        <p className="break-words text-sm sm:text-base">{message.content}</p>
+                        {message.reactions && message.reactions.length > 0 && (
+                            <div className="absolute -bottom-3 right-2 bg-card border rounded-full px-1.5 py-0.5 text-xs">
+                                {message.reactions[0].emoji} {message.reactions.length}
+                            </div>
+                        )}
                     </div>
-                )}
+                </div>
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1 px-1">
+                  <span>{message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                  {isSender && <ReadStatus read={message.read} />}
+                </div>
             </div>
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1 px-1">
-              <span>{message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-              {isSender && <ReadStatus read={message.read} />}
+            <div className={cn("self-center transition-opacity duration-200", showPicker ? "opacity-100" : "opacity-0")}>
+                <EmojiPicker onSelectEmoji={(emoji) => onUpdateReaction(message.id, emoji)} />
             </div>
-        </div>
-        <div className={cn("self-center transition-opacity duration-200", showPicker ? "opacity-100" : "opacity-0", isSender && "order-first")}>
-            <EmojiPicker onSelectEmoji={(emoji) => onUpdateReaction(message.id, emoji)} />
         </div>
       </div>
     );
