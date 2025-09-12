@@ -63,9 +63,12 @@ const NewChatDialog = ({ users, onSelectUser, open, setOpen }: { users: User[], 
                   setOpen(false);
                 }}
               >
-                <Avatar className="h-10 w-10 mr-4">
+                <Avatar className="h-10 w-10 mr-4 relative">
                   <AvatarImage src={user.avatar} alt={user.name} />
                   <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                  {user.isOnline && (
+                    <div className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-accent ring-2 ring-background"></div>
+                  )}
                 </Avatar>
                 <p className="font-semibold truncate">{user.name}</p>
               </Button>
@@ -127,9 +130,12 @@ export function Sidebar({ users, allUsers, messages, loggedInUser, selectedUser,
               )}
               onClick={() => onSelectUser(user)}
             >
-              <Avatar className="h-12 w-12 mr-4">
+              <Avatar className="h-12 w-12 mr-4 relative">
                 <AvatarImage src={user.avatar} alt={user.name} data-ai-hint="profile picture" />
                 <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                {user.isOnline && (
+                    <div className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-accent ring-2 ring-background"></div>
+                  )}
               </Avatar>
               <div className="flex-1 overflow-hidden">
                 <p className="font-semibold truncate">{user.name}</p>

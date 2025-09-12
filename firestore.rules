@@ -3,15 +3,23 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Allow users to read their own data and list all users
+    // Users can read all user profiles (for starting new chats)
+    // Users can only write to their own profile
     match /users/{userId} {
       allow read: if request.auth != null;
       allow write: if request.auth.uid == userId;
     }
 
-    // Allow users to read and write messages
+    // Allow read/write access to conversation metadata for participants
+    match /conversations/{conversationId} {
+       allow read, write: if request.auth.uid in conversationId.split('_');
+    }
+
+    // Users can only read messages where they are the sender or receiver.
+    // Users can write new messages.
     match /messages/{messageId} {
-      allow read, write: if request.auth != null;
+      allow read: if request.auth.uid == resource.data.senderId || request.auth.uid == resource.data.receiverId;
+      allow create: if request.auth.uid == request.resource.data.senderId;
     }
   }
 }

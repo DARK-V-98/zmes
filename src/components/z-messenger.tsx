@@ -15,9 +15,9 @@ import {
   orderBy,
   doc,
   writeBatch,
-  getDocs,
   Timestamp,
-  or,
+  serverTimestamp,
+  updateDoc,
 } from 'firebase/firestore';
 import { useMediaQuery } from '@/hooks/use-media-query';
 
@@ -36,6 +36,26 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const isMobile = useMediaQuery('(max-width: 768px)');
   const [view, setView] = useState<'sidebar' | 'chat'>('sidebar');
+  const [isTyping, setIsTyping] = useState(false);
+
+  // User presence management
+  useEffect(() => {
+    if (!loggedInUser.id) return;
+    const userRef = doc(db, 'users', loggedInUser.id);
+    updateDoc(userRef, { isOnline: true, lastSeen: serverTimestamp() });
+
+    const handleBeforeUnload = () => {
+      updateDoc(userRef, { isOnline: false, lastSeen: serverTimestamp() });
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      updateDoc(userRef, { isOnline: false, lastSeen: serverTimestamp() });
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [loggedInUser.id]);
+
 
   // Fetch all users for starting new conversations
   useEffect(() => {
@@ -48,24 +68,27 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
           id: doc.id,
           name: data.displayName || 'No Name',
           avatar: data.photoURL || `https://picsum.photos/seed/${doc.id}/200/200`,
+          isOnline: data.isOnline,
         });
       });
       setAllUsers(usersData);
+      
+      // Update selected user with fresh data
+      if (selectedUser) {
+        const updatedSelectedUser = usersData.find(u => u.id === selectedUser.id);
+        if (updatedSelectedUser) {
+            setSelectedUser(updatedSelectedUser);
+        }
+      }
     });
     return () => unsubscribe();
-  }, []);
+  }, [selectedUser]);
   
   // Fetch users with whom there are existing conversations
   useEffect(() => {
     if (!loggedInUser.id || allUsers.length === 0) return;
 
-    const messagesQuery = query(
-        collection(db, "messages"),
-        or(
-            where("senderId", "==", loggedInUser.id),
-            where("receiverId", "==", loggedInUser.id)
-        )
-    );
+    const messagesQuery = query(collection(db, "messages"));
 
     const unsubscribe = onSnapshot(messagesQuery, (snapshot) => {
         const userIds = new Set<string>();
@@ -73,7 +96,7 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
             const data = doc.data();
             if (data.senderId === loggedInUser.id) {
                 userIds.add(data.receiverId);
-            } else {
+            } else if (data.receiverId === loggedInUser.id) {
                 userIds.add(data.senderId);
             }
         });
@@ -82,11 +105,20 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
         setConversations(conversationUsers);
         
         if (!isMobile && !selectedUser && conversationUsers.length > 0) {
-            // Find the user object corresponding to the latest message and select them.
+            const lastMessageTimestamps: {[key: string]: number} = {};
+             snapshot.docs.forEach(doc => {
+                const data = doc.data();
+                const timestamp = (data.timestamp as Timestamp)?.toDate().getTime() || 0;
+                const otherUserId = data.senderId === loggedInUser.id ? data.receiverId : data.senderId;
+                if (!lastMessageTimestamps[otherUserId] || timestamp > lastMessageTimestamps[otherUserId]) {
+                    lastMessageTimestamps[otherUserId] = timestamp;
+                }
+             });
+
             const sortedConversations = conversationUsers.sort((a, b) => {
-                const lastMessageA = messages.filter(m => m.senderId === a.id || m.receiverId === a.id).pop()?.timestamp || 0;
-                const lastMessageB = messages.filter(m => m.senderId === b.id || m.receiverId === b.id).pop()?.timestamp || 0;
-                return (lastMessageB as number) - (lastMessageA as number);
+                const lastMessageA = lastMessageTimestamps[a.id] || 0;
+                const lastMessageB = lastMessageTimestamps[b.id] || 0;
+                return lastMessageB - lastMessageA;
             });
             if (sortedConversations.length > 0) {
               setSelectedUser(sortedConversations[0]);
@@ -95,7 +127,7 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
     });
 
     return () => unsubscribe();
-}, [loggedInUser.id, allUsers, isMobile]);
+}, [loggedInUser.id, allUsers, isMobile, selectedUser]);
 
 
   // Fetch messages for the selected conversation
@@ -141,6 +173,22 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
 
     return () => unsubscribe();
   }, [selectedUser, loggedInUser.id]);
+  
+  // Typing status management
+  useEffect(() => {
+    if (!selectedUser || !loggedInUser.id) return;
+    const conversationId = getConversationId(loggedInUser.id, selectedUser.id);
+    const conversationRef = doc(db, 'conversations', conversationId);
+
+    const unsubscribe = onSnapshot(conversationRef, (doc) => {
+      const data = doc.data();
+      if (data && data.typing) {
+        setIsTyping(data.typing[selectedUser.id] || false);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [selectedUser, loggedInUser.id]);
 
 
   const handleSendMessage = async (content: string) => {
@@ -152,11 +200,26 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
       senderId: loggedInUser.id,
       receiverId: selectedUser.id,
       content,
-      timestamp: new Date(),
+      timestamp: serverTimestamp(),
       read: false,
       reactions: [],
     });
   };
+
+  const handleTyping = async (isTyping: boolean) => {
+    if (!selectedUser) return;
+    const conversationId = getConversationId(loggedInUser.id, selectedUser.id);
+    const conversationRef = doc(db, 'conversations', conversationId);
+    try {
+        await updateDoc(conversationRef, {
+            typing: {
+                [loggedInUser.id]: isTyping
+            }
+        });
+    } catch (error) {
+       // If the doc doesn't exist, this will fail. We can ignore it.
+    }
+  }
   
   const handleSelectUser = (user: User) => {
     setSelectedUser(user);
@@ -211,6 +274,8 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
                onSendMessage={handleSendMessage}
                onBack={handleBackToSidebar}
                isMobile={isMobile}
+               isTyping={isTyping}
+               onTyping={handleTyping}
              />
            ) : (
             // Fallback for mobile when no user is selected but view is 'chat'
@@ -248,6 +313,8 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
               messages={messages}
               onSendMessage={handleSendMessage}
               isMobile={isMobile}
+              isTyping={isTyping}
+              onTyping={handleTyping}
             />
           ) : (
             <div className="flex h-full items-center justify-center bg-card">

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,6 +38,8 @@ export default function SignupPage() {
         displayName: name,
         email: user.email,
         photoURL: user.photoURL,
+        isOnline: false,
+        lastSeen: serverTimestamp(),
       });
 
       router.push('/');
