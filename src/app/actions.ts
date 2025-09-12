@@ -57,3 +57,24 @@ export async function updateUserProfile(userId: string, formData: FormData) {
     return { success: false, message: error.message };
   }
 }
+
+export async function updateMessage(messageId: string, newContent: string) {
+  if (!messageId || !newContent.trim()) {
+    throw new Error('Invalid input');
+  }
+  const messageRef = doc(db, 'messages', messageId);
+  await updateDoc(messageRef, {
+    content: newContent,
+  });
+}
+
+export async function deleteMessage(messageId: string) {
+  if (!messageId) {
+    throw new Error('Invalid input');
+  }
+  const messageRef = doc(db, 'messages', messageId);
+  await updateDoc(messageRef, {
+    content: 'This message was deleted',
+    isDeleted: true,
+  });
+}

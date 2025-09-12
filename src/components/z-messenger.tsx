@@ -30,6 +30,7 @@ import { useMediaQuery } from '@/hooks/use-media-query';
 import { useAuth } from './auth-provider';
 import { CallView, type Call } from './call-view';
 import { createPeerConnection, hangUp, answerCall, startCall } from '@/lib/webrtc';
+import { updateMessage, deleteMessage } from '@/app/actions';
 
 interface ZMessengerProps {
   loggedInUser: User;
@@ -402,6 +403,22 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
     setLocalStreamState(null);
     setRemoteStreamState(null);
   };
+
+  const handleUpdateMessage = async (messageId: string, newContent: string) => {
+    try {
+      await updateMessage(messageId, newContent);
+    } catch (error) {
+      console.error("Error updating message:", error);
+    }
+  };
+
+  const handleDeleteMessage = async (messageId: string) => {
+     try {
+      await deleteMessage(messageId);
+    } catch (error) {
+      console.error("Error deleting message:", error);
+    }
+  };
   
   const viewToShow = isMobile && !selectedUser ? 'sidebar' : 'chat';
   
@@ -430,6 +447,8 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
                 loggedInUser={loggedInUser}
                 messages={currentChatMessages}
                 onSendMessage={handleSendMessage}
+                onUpdateMessage={handleUpdateMessage}
+                onDeleteMessage={handleDeleteMessage}
                 onUpdateReaction={handleUpdateReaction}
                 onClearHistory={handleClearHistory}
                 onBack={() => setSelectedUser(null)}

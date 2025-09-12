@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Check, CheckCheck, MoreVertical, Paperclip, Send, SmilePlus, ArrowLeft, Trash2, Phone, Share } from 'lucide-react';
+import { Check, CheckCheck, MoreVertical, Paperclip, Send, SmilePlus, ArrowLeft, Trash2, Phone, Share, Edit, X } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { generateSmartReplies } from '@/app/actions';
 import { Skeleton } from './ui/skeleton';
@@ -38,6 +38,8 @@ interface ChatProps {
   loggedInUser: User;
   messages: Message[];
   onSendMessage: (content: string) => void;
+  onUpdateMessage: (messageId: string, newContent: string) => void;
+  onDeleteMessage: (messageId: string) => void;
   onUpdateReaction: (messageId: string, emoji: string) => void;
   onClearHistory: (userId: string) => void;
   onBack?: () => void;
@@ -166,50 +168,109 @@ const EmojiPicker = ({ onSelectEmoji }: { onSelectEmoji: (emoji: string) => void
   );
 };
 
-const ChatMessage = ({ message, isSender, sender, onUpdateReaction }: { message: Message; isSender: boolean; sender: User; onUpdateReaction: (messageId: string, emoji: string) => void; }) => {
-    const [showPicker, setShowPicker] = useState(false);
+const ChatMessage = ({ 
+  message, 
+  isSender, 
+  sender, 
+  onUpdateReaction,
+  onEdit,
+  onDelete,
+}: { 
+  message: Message; 
+  isSender: boolean; 
+  sender: User; 
+  onUpdateReaction: (messageId: string, emoji: string) => void;
+  onEdit: (message: Message) => void;
+  onDelete: (messageId: string) => void;
+}) => {
+    const [showActions, setShowActions] = useState(false);
+    const [isAlertOpen, setIsAlertOpen] = useState(false);
+
+    const handleDelete = () => {
+        onDelete(message.id);
+        setIsAlertOpen(false);
+    }
 
     return (
-      <div
-        className={cn('group w-full my-3 sm:my-4 flex gap-2 sm:gap-3', isSender && 'justify-end')}
-        onMouseEnter={() => setShowPicker(true)}
-        onMouseLeave={() => setShowPicker(false)}
-      >
-        {!isSender && (
-          <Avatar className="h-8 w-8 sm:h-10 sm:w-10 self-end">
-            <AvatarImage src={sender.avatar} alt={sender.name} data-ai-hint="profile picture" />
-            <AvatarFallback>{sender.name.charAt(0)}</AvatarFallback>
-          </Avatar>
-        )}
-        <div className={cn('flex flex-col max-w-[85%] sm:max-w-[80%]', isSender && 'items-end')}>
-          <div className="relative">
-            <div className={cn(
-              'px-3 py-2 sm:px-4 rounded-2xl',
-              isSender ? 'bg-primary text-primary-foreground rounded-br-none' : 'bg-card border rounded-bl-none'
-            )}>
-              <p className="break-words text-sm sm:text-base">{message.content}</p>
-              {message.reactions && message.reactions.length > 0 && (
-                <div className="absolute -bottom-3 right-2 bg-card border rounded-full px-1.5 py-0.5 text-xs">
-                  {message.reactions[0].emoji} {message.reactions.length}
+      <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
+        <div
+          className={cn('group w-full my-3 sm:my-4 flex gap-2 sm:gap-3', isSender && 'justify-end')}
+          onMouseEnter={() => setShowActions(true)}
+          onMouseLeave={() => setShowActions(false)}
+        >
+          {!isSender && (
+            <Avatar className="h-8 w-8 sm:h-10 sm:w-10 self-end">
+              <AvatarImage src={sender.avatar} alt={sender.name} data-ai-hint="profile picture" />
+              <AvatarFallback>{sender.name.charAt(0)}</AvatarFallback>
+            </Avatar>
+          )}
+
+          <div className={cn('flex-col max-w-[85%] sm:max-w-[80%]', isSender ? 'flex items-end' : 'flex items-start')}>
+              <div className="relative">
+                <div className={cn(
+                  'px-3 py-2 sm:px-4 rounded-2xl',
+                  isSender ? 'bg-primary text-primary-foreground rounded-br-none' : 'bg-card border rounded-bl-none',
+                  message.isDeleted && 'italic text-muted-foreground'
+                )}>
+                  <p className="break-words text-sm sm:text-base">{message.content}</p>
+                  {message.reactions && message.reactions.length > 0 && (
+                    <div className="absolute -bottom-3 right-2 bg-card border rounded-full px-1.5 py-0.5 text-xs">
+                      {message.reactions[0].emoji} {message.reactions.length}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              </div>
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1 px-1">
+                <span>{message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                {isSender && <ReadStatus read={message.read} />}
+              </div>
           </div>
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1 px-1">
-            <span>{message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-            {isSender && <ReadStatus read={message.read} />}
+          
+          {isSender && (
+            <Avatar className="h-8 w-8 sm:h-10 sm:w-10 self-end">
+              <AvatarImage src={sender.avatar} alt={sender.name} data-ai-hint="profile picture" />
+              <AvatarFallback>{sender.name.charAt(0)}</AvatarFallback>
+            </Avatar>
+          )}
+
+          <div className={cn("self-center transition-opacity duration-200 flex", showActions ? "opacity-100" : "opacity-0")}>
+            <EmojiPicker onSelectEmoji={(emoji) => onUpdateReaction(message.id, emoji)} />
+             {isSender && !message.isDeleted && (
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full">
+                            <MoreVertical className="h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                        <DropdownMenuItem onClick={() => onEdit(message)}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            <span>Edit</span>
+                        </DropdownMenuItem>
+                         <AlertDialogTrigger asChild>
+                            <DropdownMenuItem className="text-destructive">
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                <span>Delete</span>
+                            </DropdownMenuItem>
+                        </AlertDialogTrigger>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+             )}
           </div>
         </div>
-        {isSender && (
-          <Avatar className="h-8 w-8 sm:h-10 sm:w-10 self-end">
-            <AvatarImage src={sender.avatar} alt={sender.name} data-ai-hint="profile picture" />
-            <AvatarFallback>{sender.name.charAt(0)}</AvatarFallback>
-          </Avatar>
-        )}
-        <div className={cn("self-center transition-opacity duration-200", showPicker ? "opacity-100" : "opacity-0")}>
-          <EmojiPicker onSelectEmoji={(emoji) => onUpdateReaction(message.id, emoji)} />
-        </div>
-      </div>
+         <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                This will delete the message for everyone. This action cannot be undone.
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     );
 };
 
@@ -223,7 +284,15 @@ const TypingIndicator = () => (
 );
 
 
-const ChatMessages = ({ messages, loggedInUser, allUsers, isTyping, onUpdateReaction }: { messages: Message[]; loggedInUser: User; allUsers: User[], isTyping: boolean, onUpdateReaction: (messageId: string, emoji: string) => void; }) => {
+const ChatMessages = ({ messages, loggedInUser, allUsers, isTyping, onUpdateReaction, onEdit, onDelete }: { 
+    messages: Message[]; 
+    loggedInUser: User; 
+    allUsers: User[], 
+    isTyping: boolean, 
+    onUpdateReaction: (messageId: string, emoji: string) => void;
+    onEdit: (message: Message) => void;
+    onDelete: (messageId: string) => void;
+}) => {
   const viewportRef = useRef<HTMLDivElement>(null);
   const atBottomRef = useRef(true);
   const usersMap = new Map(allUsers.map(user => [user.id, user]));
@@ -253,7 +322,15 @@ const ChatMessages = ({ messages, loggedInUser, allUsers, isTyping, onUpdateReac
           const isSender = message.senderId === loggedInUser.id;
           const sender = isSender ? loggedInUser : usersMap.get(message.senderId)
           if (!sender) return null;
-          return <ChatMessage key={message.id} message={message} isSender={isSender} sender={sender} onUpdateReaction={onUpdateReaction}/>;
+          return <ChatMessage 
+                    key={message.id} 
+                    message={message} 
+                    isSender={isSender} 
+                    sender={sender} 
+                    onUpdateReaction={onUpdateReaction}
+                    onEdit={onEdit}
+                    onDelete={onDelete}
+                 />;
         }) : (
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
             <p>No messages yet.</p>
@@ -271,7 +348,7 @@ const SmartReplies = ({ lastMessage, onSelectReply }: { lastMessage: Message | n
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
-    if (lastMessage) {
+    if (lastMessage && !lastMessage.isDeleted) {
       startTransition(async () => {
         try {
           const result = await generateSmartReplies(lastMessage.content);
@@ -317,22 +394,40 @@ const SmartReplies = ({ lastMessage, onSelectReply }: { lastMessage: Message | n
   );
 };
 
-const ChatInput = ({ onSendMessage, onTyping }: { onSendMessage: (content: string) => void, onTyping: (isTyping: boolean) => void }) => {
+const ChatInput = ({ onSendMessage, onUpdateMessage, onTyping, editingMessage, onCancelEdit }: { 
+    onSendMessage: (content: string) => void;
+    onUpdateMessage: (messageId: string, newContent: string) => void;
+    onTyping: (isTyping: boolean) => void;
+    editingMessage: Message | null;
+    onCancelEdit: () => void;
+}) => {
   const [message, setMessage] = useState('');
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+      if (editingMessage) {
+          setMessage(editingMessage.content);
+          inputRef.current?.focus();
+      } else {
+          setMessage('');
+      }
+  }, [editingMessage]);
 
   const handleTyping = (text: string) => {
     setMessage(text);
-    if (!typingTimeoutRef.current) {
-      onTyping(true);
-    } else {
-      clearTimeout(typingTimeoutRef.current);
+    if (!editingMessage) {
+        if (!typingTimeoutRef.current) {
+            onTyping(true);
+        } else {
+            clearTimeout(typingTimeoutRef.current);
+        }
+        
+        typingTimeoutRef.current = setTimeout(() => {
+            onTyping(false);
+            typingTimeoutRef.current = null;
+        }, 1000);
     }
-    
-    typingTimeoutRef.current = setTimeout(() => {
-      onTyping(false);
-      typingTimeoutRef.current = null;
-    }, 1000);
   };
   
   const handleSend = () => {
@@ -343,15 +438,31 @@ const ChatInput = ({ onSendMessage, onTyping }: { onSendMessage: (content: strin
     onTyping(false);
 
     if (message.trim()) {
-      onSendMessage(message);
+      if (editingMessage) {
+          onUpdateMessage(editingMessage.id, message);
+      } else {
+          onSendMessage(message);
+      }
       setMessage('');
     }
   };
   
   return (
     <div className="p-2 sm:p-4 border-t bg-card">
+      {editingMessage && (
+          <div className="flex items-center justify-between bg-secondary p-2 rounded-t-md">
+              <div>
+                <p className="font-bold text-sm">Editing Message</p>
+                <p className="text-xs text-muted-foreground truncate">{editingMessage.content}</p>
+              </div>
+              <Button variant="ghost" size="icon" onClick={onCancelEdit}>
+                  <X className="h-4 w-4" />
+              </Button>
+          </div>
+      )}
       <div className="relative">
         <Input
+          ref={inputRef}
           value={message}
           onChange={(e) => handleTyping(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleSend()}
@@ -378,8 +489,9 @@ const ChatInput = ({ onSendMessage, onTyping }: { onSendMessage: (content: strin
   );
 };
 
-export function Chat({ user, loggedInUser, messages, onSendMessage, onUpdateReaction, onClearHistory, onBack, isMobile, isTyping, onTyping, onStartCall }: ChatProps) {
+export function Chat({ user, loggedInUser, messages, onSendMessage, onUpdateMessage, onDeleteMessage, onUpdateReaction, onClearHistory, onBack, isMobile, isTyping, onTyping, onStartCall }: ChatProps) {
   const allUsers = [loggedInUser, user];
+  const [editingMessage, setEditingMessage] = useState<Message | null>(null);
   
   const visibleMessages = messages.filter(m => !m.deletedFor?.includes(loggedInUser.id));
   const lastMessageFromOtherUser = visibleMessages
@@ -394,16 +506,45 @@ export function Chat({ user, loggedInUser, messages, onSendMessage, onUpdateReac
   const handleClearHistory = () => {
     onClearHistory(user.id);
   }
+  
+  const handleEdit = (message: Message) => {
+      setEditingMessage(message);
+  }
+  
+  const handleCancelEdit = () => {
+      setEditingMessage(null);
+  }
+
+  const handleUpdateMessage = (messageId: string, newContent: string) => {
+      onUpdateMessage(messageId, newContent);
+      setEditingMessage(null);
+  }
 
   return (
     <div className="flex h-full flex-col bg-background w-full">
       <ChatHeader user={user} onBack={onBack} isMobile={isMobile} onClearHistory={handleClearHistory} onStartCall={onStartCall} />
       <div className="flex-1 overflow-y-auto">
-        <ChatMessages messages={messages} loggedInUser={loggedInUser} allUsers={allUsers} isTyping={isTyping} onUpdateReaction={onUpdateReaction} />
+        <ChatMessages 
+            messages={messages} 
+            loggedInUser={loggedInUser} 
+            allUsers={allUsers} 
+            isTyping={isTyping} 
+            onUpdateReaction={onUpdateReaction}
+            onEdit={handleEdit}
+            onDelete={onDeleteMessage}
+        />
       </div>
       <div>
-        <SmartReplies lastMessage={lastMessageFromOtherUser || null} onSelectReply={handleSelectReply}/>
-        <ChatInput onSendMessage={onSendMessage} onTyping={onTyping} />
+        {!editingMessage && (
+            <SmartReplies lastMessage={lastMessageFromOtherUser || null} onSelectReply={handleSelectReply}/>
+        )}
+        <ChatInput 
+            onSendMessage={onSendMessage} 
+            onUpdateMessage={handleUpdateMessage}
+            onTyping={onTyping} 
+            editingMessage={editingMessage}
+            onCancelEdit={handleCancelEdit}
+        />
       </div>
     </div>
   );

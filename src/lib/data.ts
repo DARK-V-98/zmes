@@ -16,4 +16,5 @@ export type Message = {
   reactions: { emoji: string; userId: string }[];
   deletedFor?: string[];
   participants: string[];
+  isDeleted?: boolean;
 };
