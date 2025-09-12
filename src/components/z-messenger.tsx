@@ -224,25 +224,29 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
     const messageRef = doc(db, 'messages', messageId);
     const messageDoc = await getDoc(messageRef);
     if (!messageDoc.exists()) return;
-
+  
     const messageData = messageDoc.data();
-    const existingReactions = (messageData.reactions || []) as {emoji: string, userId: string}[];
-    
-    const myReactionIndex = existingReactions.findIndex(r => r.userId === loggedInUser.id);
-
-    if (myReactionIndex > -1) {
-      if (existingReactions[myReactionIndex].emoji === emoji) {
+    const existingReactions = (messageData.reactions || []) as {emoji: string; userId: string}[];
+    const myReaction = existingReactions.find(r => r.userId === loggedInUser.id);
+  
+    if (myReaction) {
+      // If the user is clicking the same emoji again, remove their reaction.
+      if (myReaction.emoji === emoji) {
         await updateDoc(messageRef, {
-          reactions: arrayRemove(existingReactions[myReactionIndex])
+          reactions: arrayRemove(myReaction),
         });
       } else {
-        const updatedReactions = [...existingReactions];
-        updatedReactions[myReactionIndex].emoji = emoji;
-        await updateDoc(messageRef, { reactions: updatedReactions });
+        // If the user is changing their reaction, remove the old one and add the new one.
+        // This is done in a batch to be atomic, though not strictly necessary here.
+        const batch = writeBatch(db);
+        batch.update(messageRef, { reactions: arrayRemove(myReaction) });
+        batch.update(messageRef, { reactions: arrayUnion({ emoji, userId: loggedInUser.id }) });
+        await batch.commit();
       }
     } else {
+      // If the user has not reacted yet, add the new reaction.
       await updateDoc(messageRef, {
-        reactions: arrayUnion({ emoji, userId: loggedInUser.id })
+        reactions: arrayUnion({ emoji, userId: loggedInUser.id }),
       });
     }
   };
