@@ -39,7 +39,7 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
 
   // Fetch all users for starting new conversations
   useEffect(() => {
-    const usersQuery = query(collection(db, 'users'), where('uid', '!=', loggedInUser.id));
+    const usersQuery = query(collection(db, 'users'));
     const unsubscribe = onSnapshot(usersQuery, (querySnapshot) => {
       const usersData: User[] = [];
       querySnapshot.forEach((doc) => {
@@ -53,11 +53,11 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
       setAllUsers(usersData);
     });
     return () => unsubscribe();
-  }, [loggedInUser.id]);
+  }, []);
   
   // Fetch users with whom there are existing conversations
   useEffect(() => {
-    if (!loggedInUser.id) return;
+    if (!loggedInUser.id || allUsers.length === 0) return;
 
     const messagesQuery = query(
         collection(db, "messages"),
@@ -78,19 +78,24 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
             }
         });
 
-        // We need allUsers to be populated before we can filter them
-        if (allUsers.length > 0) {
-            const conversationUsers = allUsers.filter(user => userIds.has(user.id));
-            setConversations(conversationUsers);
-            
-            if (!isMobile && !selectedUser && conversationUsers.length > 0) {
-               setSelectedUser(conversationUsers[0]);
+        const conversationUsers = allUsers.filter(user => userIds.has(user.id));
+        setConversations(conversationUsers);
+        
+        if (!isMobile && !selectedUser && conversationUsers.length > 0) {
+            // Find the user object corresponding to the latest message and select them.
+            const sortedConversations = conversationUsers.sort((a, b) => {
+                const lastMessageA = messages.filter(m => m.senderId === a.id || m.receiverId === a.id).pop()?.timestamp || 0;
+                const lastMessageB = messages.filter(m => m.senderId === b.id || m.receiverId === b.id).pop()?.timestamp || 0;
+                return (lastMessageB as number) - (lastMessageA as number);
+            });
+            if (sortedConversations.length > 0) {
+              setSelectedUser(sortedConversations[0]);
             }
         }
     });
 
     return () => unsubscribe();
-}, [loggedInUser.id, allUsers, selectedUser, isMobile]);
+}, [loggedInUser.id, allUsers, isMobile]);
 
 
   // Fetch messages for the selected conversation
@@ -110,6 +115,7 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
     const unsubscribe = onSnapshot(messagesQuery, (querySnapshot) => {
       const newMessages: Message[] = [];
       const batch = writeBatch(db);
+      let hasUnread = false;
       
       querySnapshot.forEach((doc) => {
         const data = doc.data();
@@ -123,10 +129,11 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
          // Mark message as read
          if (data.receiverId === loggedInUser.id && !data.read) {
             batch.update(doc.ref, { read: true });
+            hasUnread = true;
          }
       });
       
-      if (!querySnapshot.empty) {
+      if (hasUnread) {
         batch.commit().catch(console.error);
       }
       setMessages(newMessages);
@@ -179,6 +186,8 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
       setView('sidebar');
     }
   }, [selectedUser, isMobile]);
+  
+  const otherUsers = allUsers.filter(u => u.id !== loggedInUser.id);
 
   if (isMobile) {
     return (
@@ -187,7 +196,7 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
            {view === 'sidebar' ? (
              <Sidebar
                users={conversations}
-               allUsers={allUsers}
+               allUsers={otherUsers}
                messages={messages}
                loggedInUser={loggedInUser}
                selectedUser={selectedUser}
@@ -207,7 +216,7 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
             // Fallback for mobile when no user is selected but view is 'chat'
             <Sidebar
                 users={conversations}
-                allUsers={allUsers}
+                allUsers={otherUsers}
                 messages={messages}
                 loggedInUser={loggedInUser}
                 selectedUser={selectedUser}
@@ -224,7 +233,7 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
       <Card className="h-full flex rounded-2xl shadow-lg">
         <Sidebar
           users={conversations}
-          allUsers={allUsers}
+          allUsers={otherUsers}
           messages={messages}
           loggedInUser={loggedInUser}
           selectedUser={selectedUser}
