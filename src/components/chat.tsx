@@ -199,18 +199,19 @@ const ChatMessage = ({ message, isSender, sender, onUpdateReaction }: { message:
     const [showPicker, setShowPicker] = useState(false);
 
     return (
-      <div
-        className={cn('group w-full my-3 sm:my-4', isSender && 'flex justify-end')}
-        onMouseEnter={() => setShowPicker(true)}
-        onMouseLeave={() => setShowPicker(false)}
-      >
-        <div className={cn('flex gap-2 sm:gap-3', isSender && 'flex-row-reverse')}>
-            <Avatar className="h-8 w-8 sm:h-10 sm:w-10 self-end">
-                <AvatarImage src={sender.avatar} alt={sender.name} data-ai-hint="profile picture" />
-                <AvatarFallback>{sender.name.charAt(0)}</AvatarFallback>
-            </Avatar>
-            <div className={cn('flex flex-col', isSender && 'items-end')}>
-                <div className={cn('relative max-w-[85%] sm:max-w-[80%]')}>
+        <div
+            className={cn('group w-full my-3 sm:my-4 flex gap-2 sm:gap-3', isSender && 'justify-end')}
+            onMouseEnter={() => setShowPicker(true)}
+            onMouseLeave={() => setShowPicker(false)}
+        >
+            {!isSender && (
+                <Avatar className="h-8 w-8 sm:h-10 sm:w-10 self-end">
+                    <AvatarImage src={sender.avatar} alt={sender.name} data-ai-hint="profile picture" />
+                    <AvatarFallback>{sender.name.charAt(0)}</AvatarFallback>
+                </Avatar>
+            )}
+            <div className={cn('flex flex-col max-w-[85%] sm:max-w-[80%]', isSender && 'items-end')}>
+                <div className="relative">
                     <div className={cn(
                         'px-3 py-2 sm:px-4 rounded-2xl',
                         isSender ? 'bg-primary text-primary-foreground rounded-br-none' : 'bg-card border rounded-bl-none'
@@ -224,15 +225,20 @@ const ChatMessage = ({ message, isSender, sender, onUpdateReaction }: { message:
                     </div>
                 </div>
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1 px-1">
-                  <span>{message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                  {isSender && <ReadStatus read={message.read} />}
+                    <span>{message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    {isSender && <ReadStatus read={message.read} />}
                 </div>
             </div>
+            {isSender && (
+                <Avatar className="h-8 w-8 sm:h-10 sm:w-10 self-end">
+                    <AvatarImage src={sender.avatar} alt={sender.name} data-ai-hint="profile picture" />
+                    <AvatarFallback>{sender.name.charAt(0)}</AvatarFallback>
+                </Avatar>
+            )}
             <div className={cn("self-center transition-opacity duration-200", showPicker ? "opacity-100" : "opacity-0")}>
                 <EmojiPicker onSelectEmoji={(emoji) => onUpdateReaction(message.id, emoji)} />
             </div>
         </div>
-      </div>
     );
 };
 
@@ -419,11 +425,15 @@ export function Chat({ user, loggedInUser, messages, onSendMessage, onUpdateReac
   }
 
   return (
-    <div className="flex h-full flex-col bg-card w-full">
+    <div className="flex h-full flex-col bg-background w-full">
       <ChatHeader user={user} onBack={onBack} isMobile={isMobile} onClearHistory={handleClearHistory} onStartCall={onStartCall} />
-      <ChatMessages messages={messages} loggedInUser={loggedInUser} allUsers={allUsers} isTyping={isTyping} onUpdateReaction={onUpdateReaction} />
-      <SmartReplies lastMessage={lastMessageFromOtherUser || null} onSelectReply={handleSelectReply}/>
-      <ChatInput onSendMessage={onSendMessage} onTyping={onTyping} />
+      <div className="flex-1 overflow-y-auto">
+        <ChatMessages messages={messages} loggedInUser={loggedInUser} allUsers={allUsers} isTyping={isTyping} onUpdateReaction={onUpdateReaction} />
+      </div>
+      <div>
+        <SmartReplies lastMessage={lastMessageFromOtherUser || null} onSelectReply={handleSelectReply}/>
+        <ChatInput onSendMessage={onSendMessage} onTyping={onTyping} />
+      </div>
     </div>
   );
 }
