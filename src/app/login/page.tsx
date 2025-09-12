@@ -26,12 +26,15 @@ export default function LoginPage() {
     try {
       await signInWithEmailAndPassword(auth, email, password);
       router.push('/');
-    } catch (error: any) {
-      setError(error.message);
+    } catch (error: any)      const errorMessage =
+        error.code === 'auth/invalid-credential'
+          ? 'Invalid email or password.'
+          : error.message;
+      setError(errorMessage);
       toast({
         variant: 'destructive',
         title: 'Login Failed',
-        description: error.message,
+        description: errorMessage,
       });
     } finally {
       setLoading(false);
@@ -39,7 +42,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-background">
+    <div className="flex items-center justify-center min-h-screen bg-background p-4 sm:p-6">
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle>Login</CardTitle>

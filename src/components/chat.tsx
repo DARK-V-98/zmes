@@ -32,6 +32,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
+import { useMediaQuery } from '@/hooks/use-media-query';
 
 
 interface ChatProps {
@@ -72,11 +73,11 @@ const ChatHeader = ({ user, onBack, isMobile, onClearHistory, onStartCall }: { u
   
   const showInstallButton = isMobile || canInstall;
   
-  const handleInstallClick = () => {
+ const handleInstallClick = () => {
     if (canInstall) {
-        install();
+      install();
     } else if (isMobile) {
-        setIsInstallSheetOpen(true);
+      setIsInstallSheetOpen(true);
     }
   };
 
@@ -205,7 +206,7 @@ const ChatMessage = ({ message, isSender, sender, onUpdateReaction }: { message:
           <AvatarImage src={sender.avatar} alt={sender.name} data-ai-hint="profile picture" />
           <AvatarFallback>{sender.name.charAt(0)}</AvatarFallback>
         </Avatar>
-        <div className={cn('relative flex flex-col max-w-xs md:max-w-md lg:max-w-lg', isSender && 'items-end')}>
+        <div className={cn('relative flex flex-col max-w-[80%] sm:max-w-[70%]', isSender && 'items-end')}>
             <div className={cn(
                 'px-4 py-2 rounded-2xl flex items-end gap-2',
                 isSender ? 'bg-primary text-primary-foreground rounded-br-none' : 'bg-card border rounded-bl-none'
@@ -370,7 +371,7 @@ const ChatInput = ({ onSendMessage, onTyping }: { onSendMessage: (content: strin
           onChange={(e) => handleTyping(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleSend()}
           placeholder="Type a message..."
-          className="pr-28 h-12 rounded-full"
+          className="pr-24 h-12 rounded-full"
         />
         <div className="absolute top-1/2 right-3 -translate-y-1/2 flex items-center gap-1">
             <TooltipProvider>
