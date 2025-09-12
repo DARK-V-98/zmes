@@ -208,7 +208,7 @@ const ChatMessage = ({
           <div className={cn('flex flex-col max-w-[85%] sm:max-w-[80%]', isSender ? 'items-end' : 'items-start')}>
               <div className="relative">
                 <div className={cn(
-                  'px-3 py-2 sm:px-4 rounded-2xl',
+                  'px-3 py-2 sm:px-4 rounded-2xl overflow-hidden',
                   isSender ? 'bg-primary text-primary-foreground rounded-br-none' : 'bg-card border rounded-bl-none',
                   message.isDeleted && 'italic text-muted-foreground'
                 )}>
