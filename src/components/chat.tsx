@@ -198,17 +198,30 @@ const TypingIndicator = () => (
 
 
 const ChatMessages = ({ messages, loggedInUser, allUsers, isTyping, onUpdateReaction }: { messages: Message[]; loggedInUser: User; allUsers: User[], isTyping: boolean, onUpdateReaction: (messageId: string, emoji: string) => void; }) => {
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const atBottomRef = useRef(true);
   const usersMap = new Map(allUsers.map(user => [user.id, user]));
 
+  const handleScroll = () => {
+    const scrollEl = scrollAreaRef.current;
+    if (scrollEl) {
+      const { scrollTop, scrollHeight, clientHeight } = scrollEl;
+      // A little buffer for floating point inaccuracies
+      atBottomRef.current = scrollHeight - scrollTop - clientHeight < 10;
+    }
+  };
+
   useEffect(() => {
-    scrollRef.current?.scrollIntoView({ behavior: 'auto' });
+    const scrollEl = scrollAreaRef.current;
+    if (scrollEl && atBottomRef.current) {
+        scrollEl.scrollTop = scrollEl.scrollHeight;
+    }
   }, [messages, isTyping]);
-  
+
   const visibleMessages = messages.filter(m => !m.deletedFor?.includes(loggedInUser.id));
 
   return (
-    <ScrollArea className="flex-1 p-4">
+    <ScrollArea className="flex-1 p-4" ref={scrollAreaRef} onScroll={handleScroll}>
       <div className="space-y-4">
         {visibleMessages.length > 0 ? visibleMessages.map((message) => {
           const isSender = message.senderId === loggedInUser.id;
@@ -223,7 +236,6 @@ const ChatMessages = ({ messages, loggedInUser, allUsers, isTyping, onUpdateReac
         )}
         {isTyping && <TypingIndicator />}
       </div>
-      <div ref={scrollRef} />
     </ScrollArea>
   );
 };
