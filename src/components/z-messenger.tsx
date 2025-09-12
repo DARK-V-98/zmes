@@ -90,73 +90,53 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
     return () => unsubscribe();
   }, [selectedUser]);
   
-  // Fetch conversations and messages
+  // Fetch messages for all conversations
   useEffect(() => {
     if (!loggedInUser.id) return;
 
-    const sentMessagesQuery = query(
+    const messagesQuery = query(
       collection(db, 'messages'),
-      where('senderId', '==', loggedInUser.id),
+      where('participants', 'array-contains', loggedInUser.id),
       orderBy('timestamp', 'asc')
     );
     
-    const receivedMessagesQuery = query(
-      collection(db, 'messages'),
-      where('receiverId', '==', loggedInUser.id),
-      orderBy('timestamp', 'asc')
-    );
+    const unsubscribe = onSnapshot(messagesQuery, (snapshot) => {
+      const batch = writeBatch(db);
+      let hasUnread = false;
 
-    const processMessages = (snapshot: any, allMessagesMap: Map<string, Message>) => {
-        const batch = writeBatch(db);
-        let hasUnread = false;
-
-        snapshot.forEach((doc: any) => {
-            const data = doc.data();
-            const message = {
-                id: doc.id,
-                ...data,
-                timestamp: (data.timestamp as Timestamp)?.toDate() ?? new Date(),
-                reactions: data.reactions || [],
-            } as Message;
-            allMessagesMap.set(doc.id, message);
-
-            // Mark message as read
-            if (selectedUser && data.receiverId === loggedInUser.id && data.senderId === selectedUser.id && !data.read) {
-                batch.update(doc.ref, { read: true });
-                hasUnread = true;
-            }
-        });
+      const allMessages = snapshot.docs.map(doc => {
+        const data = doc.data();
+        const message = {
+          id: doc.id,
+          ...data,
+          timestamp: (data.timestamp as Timestamp)?.toDate() ?? new Date(),
+          reactions: data.reactions || [],
+        } as Message;
         
-        if (hasUnread) {
-            batch.commit().catch(console.error);
+        // Mark message as read
+        if (selectedUser && data.receiverId === loggedInUser.id && data.senderId === selectedUser.id && !data.read) {
+          batch.update(doc.ref, { read: true });
+          hasUnread = true;
         }
-    };
+        return message;
+      });
+      
+      if (hasUnread) {
+        batch.commit().catch(console.error);
+      }
 
-    const allMessagesMap = new Map<string, Message>();
+      setMessages(allMessages);
 
-    const unsubscribeSent = onSnapshot(sentMessagesQuery, (snapshot) => {
-        processMessages(snapshot, allMessagesMap);
-        updateStateFromMessages();
-    });
+      const userIds = new Set<string>();
+      allMessages.forEach(message => {
+        const otherUserId = message.senderId === loggedInUser.id ? message.receiverId : message.senderId;
+        userIds.add(otherUserId);
+      });
 
-    const unsubscribeReceived = onSnapshot(receivedMessagesQuery, (snapshot) => {
-        processMessages(snapshot, allMessagesMap);
-        updateStateFromMessages();
-    });
-
-    const updateStateFromMessages = () => {
-        const allMessages = Array.from(allMessagesMap.values()).sort((a,b) => a.timestamp.getTime() - b.timestamp.getTime());
-        const userIds = new Set<string>();
-        allMessages.forEach(message => {
-            const otherUserId = message.senderId === loggedInUser.id ? message.receiverId : message.senderId;
-            userIds.add(otherUserId);
-        });
-
-        const conversationUsers = allUsers.filter(user => userIds.has(user.id));
-        setConversations(conversationUsers);
-        setMessages(allMessages);
-
-        if (!isMobile && !selectedUser && conversationUsers.length > 0) {
+      const conversationUsers = allUsers.filter(user => userIds.has(user.id));
+      setConversations(conversationUsers);
+      
+      if (!isMobile && !selectedUser && conversationUsers.length > 0) {
             const lastMessageTimestamps: {[key: string]: number} = {};
             allMessages.forEach(msg => {
                 const timestamp = msg.timestamp.getTime();
@@ -176,13 +156,10 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
               setSelectedUser(sortedConversations[0]);
             }
         }
-    }
+    });
 
 
-    return () => {
-      unsubscribeSent();
-      unsubscribeReceived();
-    };
+    return () => unsubscribe();
   }, [loggedInUser.id, allUsers, isMobile, selectedUser]);
 
 
@@ -213,6 +190,7 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
       conversationId,
       senderId: loggedInUser.id,
       receiverId: selectedUser.id,
+      participants: [loggedInUser.id, selectedUser.id],
       content,
       timestamp: serverTimestamp(),
       read: false,
