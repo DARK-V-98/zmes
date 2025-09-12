@@ -470,7 +470,7 @@ export function Sidebar({ conversations, allUsers, messages, loggedInUser, selec
 
   return (
     <div className="w-full md:w-[350px] lg:w-[400px] border-r flex flex-col">
-      <div className="p-4 border-b flex justify-between items-center">
+      <div className="p-2 sm:p-4 border-b flex justify-between items-center">
         <Image src="/zm.png" alt="Z Messenger Logo" width={100} height={25} className="rounded-lg" />
         <div className="flex items-center gap-1">
           {showInstallButton && (
@@ -488,7 +488,7 @@ export function Sidebar({ conversations, allUsers, messages, loggedInUser, selec
           <NewChatDialog users={otherUsers} onSelectUser={onSelectUser} />
         </div>
       </div>
-       <div className="p-4 border-b">
+       <div className="p-2 sm:p-4 border-b">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
           <Input 

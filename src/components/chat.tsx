@@ -199,46 +199,46 @@ const ChatMessage = ({ message, isSender, sender, onUpdateReaction }: { message:
     const [showPicker, setShowPicker] = useState(false);
 
     return (
-        <div
-            className={cn('group w-full my-3 sm:my-4 flex gap-2 sm:gap-3', isSender && 'justify-end')}
-            onMouseEnter={() => setShowPicker(true)}
-            onMouseLeave={() => setShowPicker(false)}
-        >
-            {!isSender && (
-                <Avatar className="h-8 w-8 sm:h-10 sm:w-10 self-end">
-                    <AvatarImage src={sender.avatar} alt={sender.name} data-ai-hint="profile picture" />
-                    <AvatarFallback>{sender.name.charAt(0)}</AvatarFallback>
-                </Avatar>
-            )}
-            <div className={cn('flex flex-col max-w-[85%] sm:max-w-[80%]', isSender && 'items-end')}>
-                <div className="relative">
-                    <div className={cn(
-                        'px-3 py-2 sm:px-4 rounded-2xl',
-                        isSender ? 'bg-primary text-primary-foreground rounded-br-none' : 'bg-card border rounded-bl-none'
-                    )}>
-                        <p className="break-words text-sm sm:text-base">{message.content}</p>
-                        {message.reactions && message.reactions.length > 0 && (
-                            <div className="absolute -bottom-3 right-2 bg-card border rounded-full px-1.5 py-0.5 text-xs">
-                                {message.reactions[0].emoji} {message.reactions.length}
-                            </div>
-                        )}
-                    </div>
+      <div
+        className={cn('group w-full my-3 sm:my-4 flex gap-2 sm:gap-3', isSender && 'justify-end')}
+        onMouseEnter={() => setShowPicker(true)}
+        onMouseLeave={() => setShowPicker(false)}
+      >
+        {!isSender && (
+          <Avatar className="h-8 w-8 sm:h-10 sm:w-10 self-end">
+            <AvatarImage src={sender.avatar} alt={sender.name} data-ai-hint="profile picture" />
+            <AvatarFallback>{sender.name.charAt(0)}</AvatarFallback>
+          </Avatar>
+        )}
+        <div className={cn('flex flex-col max-w-[85%] sm:max-w-[80%]', isSender && 'items-end')}>
+          <div className="relative">
+            <div className={cn(
+              'px-3 py-2 sm:px-4 rounded-2xl',
+              isSender ? 'bg-primary text-primary-foreground rounded-br-none' : 'bg-card border rounded-bl-none'
+            )}>
+              <p className="break-words text-sm sm:text-base">{message.content}</p>
+              {message.reactions && message.reactions.length > 0 && (
+                <div className="absolute -bottom-3 right-2 bg-card border rounded-full px-1.5 py-0.5 text-xs">
+                  {message.reactions[0].emoji} {message.reactions.length}
                 </div>
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1 px-1">
-                    <span>{message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                    {isSender && <ReadStatus read={message.read} />}
-                </div>
+              )}
             </div>
-            {isSender && (
-                <Avatar className="h-8 w-8 sm:h-10 sm:w-10 self-end">
-                    <AvatarImage src={sender.avatar} alt={sender.name} data-ai-hint="profile picture" />
-                    <AvatarFallback>{sender.name.charAt(0)}</AvatarFallback>
-                </Avatar>
-            )}
-            <div className={cn("self-center transition-opacity duration-200", showPicker ? "opacity-100" : "opacity-0")}>
-                <EmojiPicker onSelectEmoji={(emoji) => onUpdateReaction(message.id, emoji)} />
-            </div>
+          </div>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1 px-1">
+            <span>{message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+            {isSender && <ReadStatus read={message.read} />}
+          </div>
         </div>
+        {isSender && (
+          <Avatar className="h-8 w-8 sm:h-10 sm:w-10 self-end">
+            <AvatarImage src={sender.avatar} alt={sender.name} data-ai-hint="profile picture" />
+            <AvatarFallback>{sender.name.charAt(0)}</AvatarFallback>
+          </Avatar>
+        )}
+        <div className={cn("self-center transition-opacity duration-200", showPicker ? "opacity-100" : "opacity-0")}>
+          <EmojiPicker onSelectEmoji={(emoji) => onUpdateReaction(message.id, emoji)} />
+        </div>
+      </div>
     );
 };
 
@@ -385,21 +385,21 @@ const ChatInput = ({ onSendMessage, onTyping }: { onSendMessage: (content: strin
           onChange={(e) => handleTyping(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleSend()}
           placeholder="Type a message..."
-          className="pr-20 sm:pr-24 h-11 sm:h-12 rounded-full"
+          className="pr-20 sm:pr-24 h-11 rounded-full"
         />
         <div className="absolute top-1/2 right-2 sm:right-3 -translate-y-1/2 flex items-center gap-1">
             <TooltipProvider>
                 <Tooltip>
                     <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 sm:h-10 sm:w-10">
-                        <Paperclip />
+                    <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 sm:h-9 sm:w-9">
+                        <Paperclip className="h-4 w-4 sm:h-5 sm:w-5"/>
                     </Button>
                     </TooltipTrigger>
                     <TooltipContent>Attach media</TooltipContent>
                 </Tooltip>
             </TooltipProvider>
-            <Button size="icon" className="rounded-full h-8 w-8 sm:h-10 sm:w-10" onClick={handleSend} disabled={!message.trim()}>
-                <Send />
+            <Button size="icon" className="rounded-full h-8 w-8 sm:h-9 sm:w-9" onClick={handleSend} disabled={!message.trim()}>
+                <Send className="h-4 w-4 sm:h-5 sm:w-5" />
             </Button>
         </div>
       </div>
