@@ -62,9 +62,9 @@ const IOSInstallInstructions = ({ open, onOpenChange }: { open: boolean, onOpenC
     <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent>
             <DialogHeader>
-                <DialogTitle>Install App on your iPhone or iPad</DialogTitle>
+                <DialogTitle>Install App on your Device</DialogTitle>
                 <DialogDescription>
-                    To install the app, tap the Share button in Safari and then "Add to Home Screen".
+                    To install the app, tap the Share button in your browser and then "Add to Home Screen".
                 </DialogDescription>
             </DialogHeader>
             <div className="py-4 text-center">
@@ -93,13 +93,13 @@ const NewChatDialog = ({ users, onSelectUser }: { users: User[], onSelectUser: (
     <Dialog open={open} onOpenChange={setOpen}>
       <TooltipProvider>
         <Tooltip>
-          <TooltipTrigger asChild>
-            <DialogTrigger asChild>
+          <DialogTrigger asChild>
+            <TooltipTrigger asChild>
               <Button variant="ghost" size="icon" className="rounded-full">
                 <MessageSquarePlus />
               </Button>
-            </DialogTrigger>
-          </TooltipTrigger>
+            </TooltipTrigger>
+          </DialogTrigger>
           <TooltipContent>New Chat</TooltipContent>
         </Tooltip>
       </TooltipProvider>
@@ -425,17 +425,16 @@ const ConversationItem = ({
 export function Sidebar({ conversations, allUsers, messages, loggedInUser, selectedUser, onSelectUser, onClearHistory, searchTerm, onSearchTermChange }: SidebarProps) {
   const otherUsers = allUsers.filter(u => u.id !== loggedInUser.id);
   const { canInstall, install } = usePWAInstall();
-  const [isIOSInstallOpen, setIsIOSInstallOpen] = useState(false);
+  const [isInstallSheetOpen, setIsInstallSheetOpen] = useState(false);
   const isMobile = useMediaQuery('(max-width: 768px)');
   
-  const isIOS = isMobile && /iPad|iPhone|iPod/.test(navigator.userAgent);
   const showInstallButton = isMobile || canInstall;
 
   const handleInstallClick = () => {
     if (canInstall) {
         install();
-    } else if (isIOS) {
-        setIsIOSInstallOpen(true);
+    } else if (isMobile) {
+        setIsInstallSheetOpen(true);
     }
   };
 
@@ -513,7 +512,7 @@ export function Sidebar({ conversations, allUsers, messages, loggedInUser, selec
        <div className="p-2 border-t">
         <UserMenu user={loggedInUser} />
       </div>
-      <IOSInstallInstructions open={isIOSInstallOpen} onOpenChange={setIsIOSInstallOpen} />
+      <IOSInstallInstructions open={isInstallSheetOpen} onOpenChange={setIsInstallSheetOpen} />
     </div>
   );
 }

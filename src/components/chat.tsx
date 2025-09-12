@@ -52,9 +52,9 @@ const IOSInstallInstructions = ({ open, onOpenChange }: { open: boolean, onOpenC
     <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent>
             <DialogHeader>
-                <DialogTitle>Install App on your iPhone or iPad</DialogTitle>
+                <DialogTitle>Install App on your Device</DialogTitle>
                 <DialogDescription>
-                    To install the app, tap the Share button in Safari and then "Add to Home Screen".
+                    To install the app, tap the Share button in your browser and then "Add to Home Screen".
                 </DialogDescription>
             </DialogHeader>
             <div className="py-4 text-center">
@@ -68,16 +68,15 @@ const IOSInstallInstructions = ({ open, onOpenChange }: { open: boolean, onOpenC
 const ChatHeader = ({ user, onBack, isMobile, onClearHistory, onStartCall }: { user: User, onBack?: () => void, isMobile: boolean, onClearHistory: () => void, onStartCall: (user: User) => void }) => {
   const { canInstall, install } = usePWAInstall();
   const [isAlertOpen, setIsAlertOpen] = useState(false);
-  const [isIOSInstallOpen, setIsIOSInstallOpen] = useState(false);
+  const [isInstallSheetOpen, setIsInstallSheetOpen] = useState(false);
   
-  const isIOS = isMobile && /iPad|iPhone|iPod/.test(navigator.userAgent);
   const showInstallButton = isMobile || canInstall;
   
   const handleInstallClick = () => {
     if (canInstall) {
         install();
-    } else if (isIOS) {
-        setIsIOSInstallOpen(true);
+    } else if (isMobile) {
+        setIsInstallSheetOpen(true);
     }
   };
 
@@ -155,7 +154,7 @@ const ChatHeader = ({ user, onBack, isMobile, onClearHistory, onStartCall }: { u
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      <IOSInstallInstructions open={isIOSInstallOpen} onOpenChange={setIsIOSInstallOpen} />
+      <IOSInstallInstructions open={isInstallSheetOpen} onOpenChange={setIsInstallSheetOpen} />
     </div>
   );
 };
