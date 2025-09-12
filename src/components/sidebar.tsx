@@ -57,12 +57,18 @@ interface SidebarProps {
   onSearchTermChange: (term: string) => void;
 }
 
-const NewChatDialog = ({ users, onSelectUser, open, setOpen }: { users: User[], onSelectUser: (user: User) => void; open: boolean, setOpen: (open: boolean) => void; }) => {
+const NewChatDialog = ({ users, onSelectUser }: { users: User[], onSelectUser: (user: User) => void; }) => {
+  const [open, setOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
   const filteredUsers = users.filter(user =>
     user.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
+  
+  const handleSelect = (user: User) => {
+    onSelectUser(user);
+    setOpen(false);
+  }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -98,10 +104,7 @@ const NewChatDialog = ({ users, onSelectUser, open, setOpen }: { users: User[], 
                 key={user.id}
                 variant="ghost"
                 className="w-full h-auto justify-start items-center p-3 text-left rounded-lg"
-                onClick={() => {
-                  onSelectUser(user);
-                  setOpen(false);
-                }}
+                onClick={() => handleSelect(user)}
               >
                 <Avatar className="h-10 w-10 mr-4 relative">
                   <AvatarImage src={user.avatar} alt={user.name} />
@@ -401,7 +404,6 @@ const ConversationItem = ({
 
 
 export function Sidebar({ conversations, allUsers, messages, loggedInUser, selectedUser, onSelectUser, onClearHistory, searchTerm, onSearchTermChange }: SidebarProps) {
-  const [isNewChatOpen, setIsNewChatOpen] = useState(false);
   const otherUsers = allUsers.filter(u => u.id !== loggedInUser.id);
   const { canInstall, install } = usePWAInstall();
 
@@ -442,21 +444,7 @@ export function Sidebar({ conversations, allUsers, messages, loggedInUser, selec
               </Tooltip>
             </TooltipProvider>
           )}
-          <Dialog open={isNewChatOpen} onOpenChange={setIsNewChatOpen}>
-            <DialogTrigger asChild>
-                <TooltipProvider>
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="rounded-full">
-                        <MessageSquarePlus />
-                    </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>New Chat</TooltipContent>
-                </Tooltip>
-                </TooltipProvider>
-            </DialogTrigger>
-            <NewChatDialogContent users={otherUsers} onSelectUser={onSelectUser} setOpen={setIsNewChatOpen}/>
-          </Dialog>
+          <NewChatDialog users={otherUsers} onSelectUser={onSelectUser} />
         </div>
       </div>
        <div className="p-4 border-b">
@@ -494,57 +482,4 @@ export function Sidebar({ conversations, allUsers, messages, loggedInUser, selec
       </div>
     </div>
   );
-}
-
-const NewChatDialogContent = ({ users, onSelectUser, setOpen }: { users: User[], onSelectUser: (user: User) => void; setOpen: (open: boolean) => void; }) => {
-    const [searchTerm, setSearchTerm] = useState('');
-    const filteredUsers = users.filter(user =>
-        user.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
-    return (
-        <DialogContent>
-            <DialogHeader>
-                <DialogTitle>Start a new chat</DialogTitle>
-            </DialogHeader>
-            <div className="py-4 space-y-4">
-                <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                <Input
-                    placeholder="Search by name"
-                    className="pl-10"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                />
-                </div>
-                <ScrollArea className="h-72">
-                {filteredUsers.map(user => (
-                    <Button
-                    key={user.id}
-                    variant="ghost"
-                    className="w-full h-auto justify-start items-center p-3 text-left rounded-lg"
-                    onClick={() => {
-                        onSelectUser(user);
-                        setOpen(false);
-                    }}
-                    >
-                    <Avatar className="h-10 w-10 mr-4 relative">
-                        <AvatarImage src={user.avatar} alt={user.name} />
-                        <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-                        {user.isOnline && (
-                        <div className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-accent ring-2 ring-background"></div>
-                        )}
-                    </Avatar>
-                    <p className="font-semibold truncate">{user.name}</p>
-                    </Button>
-                ))}
-                {filteredUsers.length === 0 && (
-                    <div className="text-center text-muted-foreground py-10">
-                    No users found.
-                    </div>
-                )}
-                </ScrollArea>
-            </div>
-        </DialogContent>
-    )
 }
