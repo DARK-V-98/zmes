@@ -42,7 +42,7 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
   const [conversations, setConversations] = useState<User[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const isMobile = useMediaQuery('(max-width: 768px)');
-  const [view, setView] = useState<'sidebar' | 'chat'>('sidebar');
+  const [view, setView] = useState<'sidebar' | 'chat'>(isMobile ? 'sidebar' : 'chat');
   const [isTyping, setIsTyping] = useState(false);
   const { user: authUser } = useAuth();
   const [loggedInUser, setLoggedInUser] = useState(initialUser);
@@ -247,6 +247,7 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
     const myReaction = existingReactions.find(r => r.userId === loggedInUser.id);
   
     if (myReaction) {
+      // User has reacted before
       if (myReaction.emoji === emoji) {
         // If the user is clicking the same emoji again, remove their reaction.
         await updateDoc(messageRef, {
@@ -257,7 +258,7 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
         await updateDoc(messageRef, {
           reactions: arrayRemove(myReaction),
         });
-        // ...then add the new one.
+        // ...then add the new one. This needs to be a separate call.
         await updateDoc(messageRef, {
           reactions: arrayUnion({ emoji, userId: loggedInUser.id }),
         });
@@ -314,26 +315,19 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
     setSelectedUser(null);
   }
 
+  // Effect to manage view state on mobile
   useEffect(() => {
-    if (!isMobile) {
-      setView('chat');
-    } else {
-      setView('sidebar');
-      if (conversations.length > 0 && !selectedUser) {
-        // do nothing, let the user select a conversation
-      } else if (conversations.length === 0) {
-        setSelectedUser(null);
+    if (isMobile) {
+      if (selectedUser) {
+        setView('chat');
+      } else {
+        setView('sidebar');
       }
-    }
-  }, [isMobile, conversations, selectedUser]);
-
-  useEffect(() => {
-    if (isMobile && selectedUser) {
-      setView('chat');
-    } else if (!selectedUser) {
-      setView('sidebar');
+    } else {
+      setView('chat'); // On desktop, always show chat view
     }
   }, [selectedUser, isMobile]);
+
   
   const otherUsers = allUsers.filter(u => u.id !== loggedInUser.id);
   
@@ -421,5 +415,3 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
     </div>
   );
 }
-
-    
