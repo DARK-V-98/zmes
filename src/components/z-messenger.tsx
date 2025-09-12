@@ -460,7 +460,7 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
                   onClearHistory={() => handleClearHistory(selectedUser.id)} 
                   onStartCall={handleStartCall} 
                 />
-                <div className="flex-1 overflow-y-auto">
+                <div className="flex-1 flex flex-col overflow-y-auto">
                     <ChatMessages 
                         messages={currentChatMessages} 
                         loggedInUser={loggedInUser} 

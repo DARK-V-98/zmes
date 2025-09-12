@@ -469,7 +469,7 @@ export function Sidebar({ conversations, allUsers, messages, loggedInUser, selec
   );
 
   return (
-    <div className="w-full md:w-[350px] lg:w-[400px] border-r flex flex-col">
+    <div className="w-full md:w-1/3 md:max-w-sm lg:w-1/4 lg:max-w-md border-r flex flex-col">
       <div className="p-2 sm:p-4 border-b flex justify-between items-center">
         <Image src="/zm.png" alt="Z Messenger Logo" width={100} height={25} className="rounded-lg" />
         <div className="flex items-center gap-1">
