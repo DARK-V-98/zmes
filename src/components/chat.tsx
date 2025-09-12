@@ -205,7 +205,7 @@ const ChatMessage = ({
             </Avatar>
           )}
 
-          <div className={cn('flex-col max-w-[85%] sm:max-w-[80%]', isSender ? 'flex items-end' : 'flex items-start')}>
+          <div className={cn('flex flex-col max-w-[85%] sm:max-w-[80%]', isSender ? 'items-end' : 'items-start')}>
               <div className="relative">
                 <div className={cn(
                   'px-3 py-2 sm:px-4 rounded-2xl',
