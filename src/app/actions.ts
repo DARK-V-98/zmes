@@ -1,20 +1,8 @@
 'use server';
-import { getSmartReplySuggestions } from '@/ai/flows/smart-reply-suggestions';
 import { auth, db, storage } from '@/lib/firebase';
 import { updateProfile } from 'firebase/auth';
 import { doc, updateDoc, setDoc } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadString } from 'firebase/storage';
-
-export async function generateSmartReplies(message: string) {
-  if (!message) return [];
-  try {
-    const replies = await getSmartReplySuggestions({ message });
-    return replies;
-  } catch (error) {
-    console.error('Error generating smart replies:', error);
-    return [];
-  }
-}
 
 export async function updateUserProfile(userId: string, formData: FormData) {
   const name = formData.get('name') as string;

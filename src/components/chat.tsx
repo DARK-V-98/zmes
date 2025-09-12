@@ -1,17 +1,15 @@
 
 'use client';
 
-import React, { useState, useRef, useEffect, useTransition } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import type { Message, User } from '@/lib/data';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Check, CheckCheck, MoreVertical, Paperclip, Send, SmilePlus, ArrowLeft, Trash2, Phone, Share, Edit, X } from 'lucide-react';
+import { Check, CheckCheck, MoreVertical, Paperclip, Send, SmilePlus, ArrowLeft, Trash2, Phone, Edit, X } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { generateSmartReplies } from '@/app/actions';
-import { Skeleton } from './ui/skeleton';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import {
   DropdownMenu,
@@ -318,56 +316,6 @@ const ChatMessages = ({ messages, loggedInUser, allUsers, isTyping, onUpdateReac
   );
 };
 
-const SmartReplies = ({ lastMessage, onSelectReply }: { lastMessage: Message | null, onSelectReply: (reply: string) => void }) => {
-  const [replies, setReplies] = useState<string[]>([]);
-  const [isPending, startTransition] = useTransition();
-
-  useEffect(() => {
-    if (lastMessage && !lastMessage.isDeleted) {
-      startTransition(async () => {
-        try {
-          const result = await generateSmartReplies(lastMessage.content);
-          setReplies(result);
-        } catch (error) {
-          console.error("Failed to generate smart replies:", error);
-          setReplies([]);
-        }
-      });
-    } else {
-      setReplies([]);
-    }
-  }, [lastMessage]);
-
-  if (!lastMessage || (isPending && replies.length === 0)) {
-    return (
-        <div className="flex gap-2 p-2 sm:p-4 pt-0 h-[52px] items-center">
-            <Skeleton className="h-9 w-24 rounded-full" />
-            <Skeleton className="h-9 w-32 rounded-full" />
-            <Skeleton className="h-9 w-28 rounded-full" />
-        </div>
-    );
-  }
-
-  if (replies.length === 0) return <div className="h-1 sm:h-[52px]"></div>
-
-  return (
-    <div className="p-2 sm:p-4 pt-0 h-[52px]">
-      <div className="flex gap-2 items-center overflow-x-auto pb-2">
-        {replies.map((reply, index) => (
-          <Button
-            key={index}
-            variant="outline"
-            size="sm"
-            className="rounded-full shrink-0"
-            onClick={() => onSelectReply(reply)}
-          >
-            {reply}
-          </Button>
-        ))}
-      </div>
-    </div>
-  );
-};
 
 const ChatInput = ({ onSendMessage, onUpdateMessage, onTyping, editingMessage, onCancelEdit }: { 
     onSendMessage: (content: string) => void;
@@ -468,16 +416,6 @@ export function Chat({ user, loggedInUser, messages, onSendMessage, onUpdateMess
   const allUsers = [loggedInUser, user];
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
   
-  const visibleMessages = messages.filter(m => !m.deletedFor?.includes(loggedInUser.id));
-  const lastMessageFromOtherUser = visibleMessages
-    .slice()
-    .reverse()
-    .find(m => m.senderId === user.id);
-  
-  const handleSelectReply = (reply: string) => {
-    onSendMessage(reply);
-  };
-
   const handleClearHistory = () => {
     onClearHistory(user.id);
   }
@@ -509,18 +447,13 @@ export function Chat({ user, loggedInUser, messages, onSendMessage, onUpdateMess
             onDelete={onDeleteMessage}
         />
       </div>
-      <div>
-        {!editingMessage && (
-            <SmartReplies lastMessage={lastMessageFromOtherUser || null} onSelectReply={handleSelectReply}/>
-        )}
-        <ChatInput 
-            onSendMessage={onSendMessage} 
-            onUpdateMessage={handleUpdateMessage}
-            onTyping={onTyping} 
-            editingMessage={editingMessage}
-            onCancelEdit={handleCancelEdit}
-        />
-      </div>
+      <ChatInput 
+          onSendMessage={onSendMessage} 
+          onUpdateMessage={handleUpdateMessage}
+          onTyping={onTyping} 
+          editingMessage={editingMessage}
+          onCancelEdit={handleCancelEdit}
+      />
     </div>
   );
 }
