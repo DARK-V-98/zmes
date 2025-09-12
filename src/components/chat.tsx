@@ -311,7 +311,7 @@ const ChatMessage = ({ message, isSender, sender, onUpdateReaction }: { message:
         </Avatar>
         <div className={cn('relative flex flex-col max-w-[85%] sm:max-w-[80%]', isSender && 'items-end')}>
             <div className={cn(
-                'px-3 py-2 sm:px-4 rounded-2xl flex items-end gap-2',
+                'px-3 py-2 sm:px-4 rounded-2xl gap-2',
                 isSender ? 'bg-primary text-primary-foreground rounded-br-none' : 'bg-card border rounded-bl-none'
             )}>
                 <p className="break-words text-sm sm:text-base">{message.content}</p>
