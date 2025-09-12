@@ -170,7 +170,7 @@ const ChatHeader = ({ loggedInUserId, user, onBack, isMobile, onClearHistory, on
   const [isInstallSheetOpen, setIsInstallSheetOpen] = useState(false);
   
   const isIos = () => /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
-  const isMobileDevice = () => /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  const isMobileDevice = () => isMobile || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
   
   const showInstallButton = canInstall || isMobileDevice();
   
@@ -188,18 +188,18 @@ const ChatHeader = ({ loggedInUserId, user, onBack, isMobile, onClearHistory, on
   }
 
   return (
-    <div className="flex items-center p-4 border-b bg-card z-10">
+    <div className="flex items-center p-2 sm:p-4 border-b bg-card z-10">
       {isMobile && (
           <Button variant="ghost" size="icon" className="mr-2" onClick={onBack}>
             <ArrowLeft />
           </Button>
         )}
-      <Avatar className="h-10 w-10 mr-4">
+      <Avatar className="h-8 w-8 sm:h-10 sm:w-10 mr-2 sm:mr-4">
         <AvatarImage src={user.avatar} alt={user.name} data-ai-hint="profile picture" />
         <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
       </Avatar>
       <div className="flex-1">
-        <p className="font-semibold">{user.name}</p>
+        <p className="font-semibold text-sm sm:text-base">{user.name}</p>
         <div className="flex items-center gap-1.5">
           <span className={cn("h-2.5 w-2.5 rounded-full", user.isOnline ? "bg-accent" : "bg-gray-400")}></span>
           <span className="text-xs text-muted-foreground">{user.isOnline ? 'Online' : 'Offline'}</span>
@@ -301,20 +301,20 @@ const ChatMessage = ({ message, isSender, sender, onUpdateReaction }: { message:
 
     return (
       <div
-        className={cn('group flex items-start gap-3 my-4', isSender && 'flex-row-reverse')}
+        className={cn('group flex items-start gap-2 sm:gap-3 my-3 sm:my-4', isSender && 'flex-row-reverse')}
         onMouseEnter={() => setShowPicker(true)}
         onMouseLeave={() => setShowPicker(false)}
       >
-        <Avatar className="h-8 w-8">
+        <Avatar className="h-8 w-8 sm:h-10 sm:w-10">
           <AvatarImage src={sender.avatar} alt={sender.name} data-ai-hint="profile picture" />
           <AvatarFallback>{sender.name.charAt(0)}</AvatarFallback>
         </Avatar>
-        <div className={cn('relative flex flex-col max-w-[85%]', isSender && 'items-end')}>
+        <div className={cn('relative flex flex-col max-w-[85%] sm:max-w-[80%]', isSender && 'items-end')}>
             <div className={cn(
-                'px-4 py-2 rounded-2xl flex items-end gap-2',
+                'px-3 py-2 sm:px-4 rounded-2xl flex items-end gap-2',
                 isSender ? 'bg-primary text-primary-foreground rounded-br-none' : 'bg-card border rounded-bl-none'
             )}>
-                <p className="break-words">{message.content}</p>
+                <p className="break-words text-sm sm:text-base">{message.content}</p>
                 {message.reactions && message.reactions.length > 0 && (
                     <div className="absolute -bottom-3 right-2 bg-card border rounded-full px-1.5 py-0.5 text-xs">
                         {message.reactions[0].emoji} {message.reactions.length}
@@ -334,7 +334,7 @@ const ChatMessage = ({ message, isSender, sender, onUpdateReaction }: { message:
 };
 
 const TypingIndicator = () => (
-  <div className="flex items-center gap-2 p-4 pt-0">
+  <div className="flex items-center gap-2 px-4 py-2">
     <div className="h-2 w-2 bg-muted-foreground rounded-full animate-bounce [animation-delay:-0.3s]"></div>
     <div className="h-2 w-2 bg-muted-foreground rounded-full animate-bounce [animation-delay:-0.15s]"></div>
     <div className="h-2 w-2 bg-muted-foreground rounded-full animate-bounce"></div>
@@ -368,7 +368,7 @@ const ChatMessages = ({ messages, loggedInUser, allUsers, isTyping, onUpdateReac
 
   return (
     <ScrollArea className="flex-1" viewportRef={viewportRef} onScroll={handleScroll}>
-      <div className="p-4">
+      <div className="p-2 sm:p-4">
         {visibleMessages.length > 0 ? visibleMessages.map((message) => {
           const isSender = message.senderId === loggedInUser.id;
           const sender = isSender ? loggedInUser : usersMap.get(message.senderId)
@@ -408,7 +408,7 @@ const SmartReplies = ({ lastMessage, onSelectReply }: { lastMessage: Message | n
 
   if (!lastMessage || (isPending && replies.length === 0)) {
     return (
-        <div className="flex gap-2 p-4 pt-0 h-[52px] items-center">
+        <div className="flex gap-2 p-2 sm:p-4 pt-0 h-[52px] items-center">
             <Skeleton className="h-9 w-24 rounded-full" />
             <Skeleton className="h-9 w-32 rounded-full" />
             <Skeleton className="h-9 w-28 rounded-full" />
@@ -416,21 +416,23 @@ const SmartReplies = ({ lastMessage, onSelectReply }: { lastMessage: Message | n
     );
   }
 
-  if (replies.length === 0) return <div className="h-[52px]"></div>
+  if (replies.length === 0) return <div className="h-1 sm:h-[52px]"></div>
 
   return (
-    <div className="flex gap-2 p-4 pt-0 h-[52px] items-center overflow-x-auto">
-      {replies.map((reply, index) => (
-        <Button
-          key={index}
-          variant="outline"
-          size="sm"
-          className="rounded-full shrink-0"
-          onClick={() => onSelectReply(reply)}
-        >
-          {reply}
-        </Button>
-      ))}
+    <div className="p-2 sm:p-4 pt-0 h-[52px]">
+      <div className="flex gap-2 items-center overflow-x-auto pb-2">
+        {replies.map((reply, index) => (
+          <Button
+            key={index}
+            variant="outline"
+            size="sm"
+            className="rounded-full shrink-0"
+            onClick={() => onSelectReply(reply)}
+          >
+            {reply}
+          </Button>
+        ))}
+      </div>
     </div>
   );
 };
@@ -467,27 +469,27 @@ const ChatInput = ({ onSendMessage, onTyping }: { onSendMessage: (content: strin
   };
   
   return (
-    <div className="p-4 border-t bg-card">
+    <div className="p-2 sm:p-4 border-t bg-card">
       <div className="relative">
         <Input
           value={message}
           onChange={(e) => handleTyping(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleSend()}
           placeholder="Type a message..."
-          className="pr-24 h-12 rounded-full"
+          className="pr-20 sm:pr-24 h-11 sm:h-12 rounded-full"
         />
-        <div className="absolute top-1/2 right-3 -translate-y-1/2 flex items-center gap-1">
+        <div className="absolute top-1/2 right-2 sm:right-3 -translate-y-1/2 flex items-center gap-1">
             <TooltipProvider>
                 <Tooltip>
                     <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="rounded-full">
+                    <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 sm:h-10 sm:w-10">
                         <Paperclip />
                     </Button>
                     </TooltipTrigger>
                     <TooltipContent>Attach media</TooltipContent>
                 </Tooltip>
             </TooltipProvider>
-            <Button size="icon" className="rounded-full" onClick={handleSend} disabled={!message.trim()}>
+            <Button size="icon" className="rounded-full h-8 w-8 sm:h-10 sm:w-10" onClick={handleSend} disabled={!message.trim()}>
                 <Send />
             </Button>
         </div>
