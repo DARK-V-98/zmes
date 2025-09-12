@@ -27,6 +27,7 @@ import {
 } from 'firebase/firestore';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import { useAuth } from './auth-provider';
+import { CallView, type Call } from './call-view';
 
 interface ZMessengerProps {
   loggedInUser: User;
@@ -46,6 +47,9 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
   const { user: authUser } = useAuth();
   const [loggedInUser, setLoggedInUser] = useState(initialUser);
   const [searchTerm, setSearchTerm] = useState('');
+  const [activeCall, setActiveCall] = useState<Call | null>(null);
+  const [incomingCall, setIncomingCall] = useState<Call | null>(null);
+
 
   // Keep loggedInUser state in sync with AuthProvider and other users' state
   useEffect(() => {
@@ -249,11 +253,13 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
     const myReaction = existingReactions.find(r => r.userId === loggedInUser.id);
   
     if (myReaction) {
+      // If the reaction is the same, remove it
       if (myReaction.emoji === emoji) {
         await updateDoc(messageRef, {
           reactions: arrayRemove(myReaction),
         });
       } else {
+        // If the reaction is different, change it by removing the old one first, then adding the new one
         await updateDoc(messageRef, {
           reactions: arrayRemove(myReaction),
         });
@@ -262,6 +268,7 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
         });
       }
     } else {
+      // If no reaction exists, add it
       await updateDoc(messageRef, {
         reactions: arrayUnion({ emoji, userId: loggedInUser.id }),
       });
@@ -319,9 +326,13 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
   // Effect to manage view state on mobile
   useEffect(() => {
     if (isMobile) {
-      setView(selectedUser ? 'chat' : 'sidebar');
+      if (selectedUser) {
+        setView('chat');
+      } else {
+        setView('sidebar');
+      }
     } else {
-      setView('chat'); 
+      setView('chat'); // On desktop, we can always show chat view
     }
   }, [selectedUser, isMobile]);
 
@@ -331,46 +342,40 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
   const currentChatMessages = selectedUser 
     ? messages.filter(m => m.conversationId === getConversationId(loggedInUser.id, selectedUser.id)) 
     : [];
+  
+  // Call handling logic (dummies for now)
+  const handleStartCall = (user: User) => {
+    console.log(`Starting call with ${user.name}`);
+    const callData = { 
+      caller: loggedInUser, 
+      callee: user, 
+      status: 'ringing' as const
+    };
+    setActiveCall(callData);
+    // In a real app, you'd signal the other user here.
+    // For UI demo, we'll simulate an incoming call for the other side.
+  };
 
-  if (isMobile) {
-    return (
-       <div className="h-full">
-         <Card className="h-full flex rounded-none shadow-none border-0">
-           {view === 'sidebar' && (
-             <Sidebar
-               conversations={conversations}
-               allUsers={otherUsers}
-               messages={messages}
-               loggedInUser={loggedInUser}
-               selectedUser={selectedUser}
-               onSelectUser={handleSelectUser}
-               onClearHistory={handleClearHistory}
-               searchTerm={searchTerm}
-               onSearchTermChange={setSearchTerm}
-             />
-           )}
-           {view === 'chat' && selectedUser && (
-             <Chat
-               key={selectedUser.id}
-               user={selectedUser}
-               loggedInUser={loggedInUser}
-               messages={currentChatMessages}
-               onSendMessage={handleSendMessage}
-               onUpdateReaction={handleUpdateReaction}
-               onClearHistory={handleClearHistory}
-               onBack={handleBackToSidebar}
-               isMobile={isMobile}
-               isTyping={isTyping}
-               onTyping={handleTyping}
-             />
-           )}
-         </Card>
-       </div>
-    )
-  }
+  const handleAcceptCall = () => {
+    if (incomingCall) {
+      console.log('Accepting call');
+      setActiveCall({ ...incomingCall, status: 'active' });
+      setIncomingCall(null);
+    }
+  };
+
+  const handleDeclineCall = () => {
+    console.log('Declining call');
+    setIncomingCall(null);
+  };
+  
+  const handleEndCall = () => {
+    console.log('Ending call');
+    setActiveCall(null);
+  };
 
   return (
-    <div className="p-4 h-full">
+    <div className="p-4 h-full relative">
       <Card className="h-full flex rounded-2xl shadow-lg">
         <Sidebar
           conversations={conversations}
@@ -396,6 +401,7 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
               isMobile={isMobile}
               isTyping={isTyping}
               onTyping={handleTyping}
+              onStartCall={handleStartCall}
             />
           ) : (
             <div className="flex h-full items-center justify-center bg-card">
@@ -404,6 +410,13 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
           )}
         </div>
       </Card>
+      <CallView
+        activeCall={activeCall}
+        incomingCall={incomingCall}
+        onAccept={handleAcceptCall}
+        onDecline={handleDeclineCall}
+        onEnd={handleEndCall}
+      />
     </div>
   );
 }

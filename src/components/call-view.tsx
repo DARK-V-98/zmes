@@ -1,0 +1,121 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import type { User } from '@/lib/data';
+import { Card, CardContent } from './ui/card';
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import { Button } from './ui/button';
+import { Mic, MicOff, Phone, PhoneOff } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+export interface Call {
+  caller: User;
+  callee: User;
+  status: 'ringing' | 'active' | 'declined' | 'ended';
+}
+
+interface CallViewProps {
+  activeCall: Call | null;
+  incomingCall: Call | null;
+  onAccept: () => void;
+  onDecline: () => void;
+  onEnd: () => void;
+}
+
+const IncomingCall = ({ call, onAccept, onDecline }: { call: Call; onAccept: () => void; onDecline: () => void; }) => {
+    return (
+        <div className="fixed bottom-5 right-5 z-50">
+            <Card className="w-80 shadow-2xl animate-in fade-in-0 slide-in-from-bottom-5">
+                <CardContent className="p-4">
+                    <div className="flex items-center gap-4">
+                        <Avatar className="h-12 w-12">
+                            <AvatarImage src={call.caller.avatar} />
+                            <AvatarFallback>{call.caller.name.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                            <p className="font-semibold">{call.caller.name}</p>
+                            <p className="text-sm text-muted-foreground">Incoming audio call...</p>
+                        </div>
+                    </div>
+                    <div className="mt-4 flex justify-end gap-2">
+                        <Button variant="destructive" size="icon" onClick={onDecline}>
+                            <PhoneOff />
+                        </Button>
+                        <Button variant="default" size="icon" className="bg-green-500 hover:bg-green-600" onClick={onAccept}>
+                            <Phone />
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
+        </div>
+    );
+};
+
+const ActiveCall = ({ call, onEnd }: { call: Call; onEnd: () => void; }) => {
+    const [isMuted, setIsMuted] = useState(false);
+    const [duration, setDuration] = useState(0);
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setDuration(prev => prev + 1);
+        }, 1000);
+        return () => clearInterval(timer);
+    }, []);
+
+    const formatDuration = (seconds: number) => {
+        const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
+        const secs = (seconds % 60).toString().padStart(2, '0');
+        return `${mins}:${secs}`;
+    };
+    
+    // Caller is the one who initiated, callee is the one who received
+    // The "other user" is the one who is not the current active user, but we don't have that info here.
+    // So we'll just show the callee's info as the main person in the call.
+    const otherUser = call.callee;
+
+    return (
+        <div className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm flex items-center justify-center">
+            <Card className="w-full max-w-sm shadow-2xl animate-in fade-in-0 zoom-in-95">
+                <CardContent className="p-8 flex flex-col items-center justify-center gap-6">
+                    <Avatar className="h-28 w-28 border-4 border-primary">
+                        <AvatarImage src={otherUser.avatar} />
+                        <AvatarFallback className="text-4xl">{otherUser.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <div className="text-center">
+                        <p className="text-2xl font-bold">{otherUser.name}</p>
+                        <p className="text-muted-foreground">{call.status === 'ringing' ? 'Ringing...' : formatDuration(duration)}</p>
+                    </div>
+                    <div className="flex items-center justify-center gap-4 mt-4">
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            className={cn("rounded-full h-14 w-14", isMuted && "bg-primary text-primary-foreground")}
+                            onClick={() => setIsMuted(!isMuted)}
+                        >
+                            {isMuted ? <MicOff /> : <Mic />}
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            size="icon"
+                            className="rounded-full h-16 w-16"
+                            onClick={onEnd}
+                        >
+                            <PhoneOff size={28} />
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
+        </div>
+    );
+};
+
+
+export function CallView({ activeCall, incomingCall, onAccept, onDecline, onEnd }: CallViewProps) {
+    if (activeCall) {
+        return <ActiveCall call={activeCall} onEnd={onEnd} />;
+    }
+    if (incomingCall) {
+        return <IncomingCall call={incomingCall} onAccept={onAccept} onDecline={onDecline} />;
+    }
+    return null;
+}

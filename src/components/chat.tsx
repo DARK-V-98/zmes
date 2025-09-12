@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Check, CheckCheck, MoreVertical, Paperclip, Send, SmilePlus, ArrowLeft, Download, Trash2 } from 'lucide-react';
+import { Check, CheckCheck, MoreVertical, Paperclip, Send, SmilePlus, ArrowLeft, Download, Trash2, Phone } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { generateSmartReplies } from '@/app/actions';
 import { Skeleton } from './ui/skeleton';
@@ -43,9 +43,10 @@ interface ChatProps {
   isMobile: boolean;
   isTyping: boolean;
   onTyping: (isTyping: boolean) => void;
+  onStartCall: (user: User) => void;
 }
 
-const ChatHeader = ({ user, onBack, isMobile, onClearHistory }: { user: User, onBack?: () => void, isMobile: boolean, onClearHistory: () => void }) => {
+const ChatHeader = ({ user, onBack, isMobile, onClearHistory, onStartCall }: { user: User, onBack?: () => void, isMobile: boolean, onClearHistory: () => void, onStartCall: (user: User) => void }) => {
   const { canInstall, install } = usePWAInstall();
   const [isAlertOpen, setIsAlertOpen] = useState(false);
 
@@ -72,6 +73,16 @@ const ChatHeader = ({ user, onBack, isMobile, onClearHistory }: { user: User, on
           <span className="text-xs text-muted-foreground">{user.isOnline ? 'Online' : 'Offline'}</span>
         </div>
       </div>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" onClick={() => onStartCall(user)}>
+              <Phone />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Start audio call</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
        {canInstall && (
         <TooltipProvider>
           <Tooltip>
@@ -350,7 +361,7 @@ const ChatInput = ({ onSendMessage, onTyping }: { onSendMessage: (content: strin
   );
 };
 
-export function Chat({ user, loggedInUser, messages, onSendMessage, onUpdateReaction, onClearHistory, onBack, isMobile, isTyping, onTyping }: ChatProps) {
+export function Chat({ user, loggedInUser, messages, onSendMessage, onUpdateReaction, onClearHistory, onBack, isMobile, isTyping, onTyping, onStartCall }: ChatProps) {
   const allUsers = [loggedInUser, user];
   
   const visibleMessages = messages.filter(m => !m.deletedFor?.includes(loggedInUser.id));
@@ -369,7 +380,7 @@ export function Chat({ user, loggedInUser, messages, onSendMessage, onUpdateReac
 
   return (
     <div className="flex h-full flex-col bg-card w-full">
-      <ChatHeader user={user} onBack={onBack} isMobile={isMobile} onClearHistory={handleClearHistory} />
+      <ChatHeader user={user} onBack={onBack} isMobile={isMobile} onClearHistory={handleClearHistory} onStartCall={onStartCall}/>
       <ChatMessages messages={messages} loggedInUser={loggedInUser} allUsers={allUsers} isTyping={isTyping} onUpdateReaction={onUpdateReaction} />
       <SmartReplies lastMessage={lastMessageFromOtherUser || null} onSelectReply={handleSelectReply}/>
       <ChatInput onSendMessage={onSendMessage} onTyping={onTyping} />
