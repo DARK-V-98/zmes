@@ -57,6 +57,8 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
   
   // Fetch users with whom there are existing conversations
   useEffect(() => {
+    if (!loggedInUser.id) return;
+
     const messagesQuery = query(
         collection(db, "messages"),
         or(
@@ -76,12 +78,14 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
             }
         });
 
-        const conversationUsers = allUsers.filter(user => userIds.has(user.id));
-        setConversations(conversationUsers);
-        
-        if (!isMobile && !selectedUser && conversationUsers.length > 0) {
-           setSelectedUser(conversationUsers[0]);
-           setView('chat');
+        // We need allUsers to be populated before we can filter them
+        if (allUsers.length > 0) {
+            const conversationUsers = allUsers.filter(user => userIds.has(user.id));
+            setConversations(conversationUsers);
+            
+            if (!isMobile && !selectedUser && conversationUsers.length > 0) {
+               setSelectedUser(conversationUsers[0]);
+            }
         }
     });
 
@@ -91,7 +95,10 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
 
   // Fetch messages for the selected conversation
   useEffect(() => {
-    if (!selectedUser) return;
+    if (!selectedUser || !loggedInUser.id) {
+        setMessages([]);
+        return;
+    };
     
     const conversationId = getConversationId(loggedInUser.id, selectedUser.id);
     const messagesQuery = query(
@@ -119,7 +126,9 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
          }
       });
       
-      batch.commit().catch(console.error);
+      if (!querySnapshot.empty) {
+        batch.commit().catch(console.error);
+      }
       setMessages(newMessages);
     });
 
@@ -144,7 +153,6 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
   
   const handleSelectUser = (user: User) => {
     setSelectedUser(user);
-    setMessages([]);
     if (isMobile) {
       setView('chat');
     }
@@ -154,6 +162,23 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
     setView('sidebar');
     setSelectedUser(null);
   }
+
+  useEffect(() => {
+    if (!isMobile) {
+      setView('chat');
+    } else {
+      setView('sidebar');
+      setSelectedUser(null);
+    }
+  }, [isMobile]);
+
+  useEffect(() => {
+    if (isMobile && selectedUser) {
+      setView('chat');
+    } else if (!selectedUser) {
+      setView('sidebar');
+    }
+  }, [selectedUser, isMobile]);
 
   if (isMobile) {
     return (
@@ -178,7 +203,17 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
                onBack={handleBackToSidebar}
                isMobile={isMobile}
              />
-           ) : null }
+           ) : (
+            // Fallback for mobile when no user is selected but view is 'chat'
+            <Sidebar
+                users={conversations}
+                allUsers={allUsers}
+                messages={messages}
+                loggedInUser={loggedInUser}
+                selectedUser={selectedUser}
+                onSelectUser={handleSelectUser}
+              />
+           ) }
          </Card>
        </div>
     )
