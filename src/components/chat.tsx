@@ -385,20 +385,20 @@ const ChatInput = ({ onSendMessage, onTyping }: { onSendMessage: (content: strin
           onChange={(e) => handleTyping(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleSend()}
           placeholder="Type a message..."
-          className="pr-20 sm:pr-24 h-11 rounded-full"
+          className="pr-16 sm:pr-20 h-10 sm:h-11 rounded-full"
         />
-        <div className="absolute top-1/2 right-2 sm:right-3 -translate-y-1/2 flex items-center gap-1">
+        <div className="absolute top-1/2 right-2 -translate-y-1/2 flex items-center gap-1">
             <TooltipProvider>
                 <Tooltip>
                     <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 sm:h-9 sm:w-9">
+                    <Button variant="ghost" size="icon" className="rounded-full h-7 w-7 sm:h-8 sm:w-8">
                         <Paperclip className="h-4 w-4 sm:h-5 sm:w-5"/>
                     </Button>
                     </TooltipTrigger>
                     <TooltipContent>Attach media</TooltipContent>
                 </Tooltip>
             </TooltipProvider>
-            <Button size="icon" className="rounded-full h-8 w-8 sm:h-9 sm:w-9" onClick={handleSend} disabled={!message.trim()}>
+            <Button size="icon" className="rounded-full h-7 w-7 sm:h-8 sm:w-8" onClick={handleSend} disabled={!message.trim()}>
                 <Send className="h-4 w-4 sm:h-5 sm:w-5" />
             </Button>
         </div>
