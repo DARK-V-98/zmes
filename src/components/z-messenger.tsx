@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -83,7 +84,7 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
   }, [loggedInUser.id]);
 
 
-  // Fetch all users and initial data
+  // Fetch all users
   useEffect(() => {
     const usersQuery = query(collection(db, 'users'));
     const unsubscribeUsers = onSnapshot(usersQuery, (querySnapshot) => {
@@ -106,7 +107,11 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
         }
       }
     });
+     return () => unsubscribeUsers();
+  }, [selectedUser]);
 
+  // Fetch all messages for the logged-in user
+  useEffect(() => {
     if (!loggedInUser.id) return;
 
     const messagesQuery = query(
@@ -116,80 +121,84 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
     );
     
     const unsubscribeMessages = onSnapshot(messagesQuery, (snapshot) => {
-      const batch = writeBatch(db);
-      let hasUnread = false;
-
       const allMessages = snapshot.docs.map(doc => {
         const data = doc.data();
-        const message = {
+        return {
           id: doc.id,
           ...data,
           timestamp: (data.timestamp as Timestamp)?.toDate() ?? new Date(),
           reactions: data.reactions || [],
           deletedFor: data.deletedFor || [],
         } as Message;
-        
-        if (selectedUser && data.receiverId === loggedInUser.id && data.senderId === selectedUser.id && !data.read) {
-          batch.update(doc.ref, { read: true });
-          hasUnread = true;
-        }
-        return message;
       });
-      
-      if (hasUnread) {
-        batch.commit().catch(console.error);
-      }
-
       setMessages(allMessages);
+    });
 
+    return () => unsubscribeMessages();
+  }, [loggedInUser.id]);
+
+
+  // Update conversation list based on messages
+  useEffect(() => {
       const userIds = new Set<string>();
-      allMessages.forEach(message => {
+      messages.forEach(message => {
         if (!message.deletedFor?.includes(loggedInUser.id)) {
             const otherUserId = message.senderId === loggedInUser.id ? message.receiverId : message.senderId;
             userIds.add(otherUserId);
         }
       });
 
-      setAllUsers(currentAllUsers => {
-          const conversationUsers = currentAllUsers.filter(user => userIds.has(user.id));
-          setConversations(conversationUsers);
-          
-          if (selectedUser && !userIds.has(selectedUser.id)) {
-            setSelectedUser(null);
-          }
+      const conversationUsers = allUsers.filter(user => userIds.has(user.id));
+      setConversations(conversationUsers);
+      
+      if (selectedUser && !userIds.has(selectedUser.id)) {
+        setSelectedUser(null);
+      }
 
-          if (!isMobile && !selectedUser && conversationUsers.length > 0) {
-              const lastMessageTimestamps: {[key: string]: number} = {};
-              allMessages.forEach(msg => {
-                  if (!msg.deletedFor?.includes(loggedInUser.id)) {
-                    const timestamp = msg.timestamp.getTime();
-                    const otherUserId = msg.senderId === loggedInUser.id ? msg.receiverId : msg.senderId;
-                    if (!lastMessageTimestamps[otherUserId] || timestamp > lastMessageTimestamps[otherUserId]) {
-                        lastMessageTimestamps[otherUserId] = timestamp;
-                    }
-                  }
-              });
-
-              const sortedConversations = [...conversationUsers].sort((a, b) => {
-                  const lastMessageA = lastMessageTimestamps[a.id] || 0;
-                  const lastMessageB = lastMessageTimestamps[b.id] || 0;
-                  return lastMessageB - lastMessageA;
-              });
-
-              if (sortedConversations.length > 0) {
-                setSelectedUser(sortedConversations[0]);
+      if (!isMobile && !selectedUser && conversationUsers.length > 0) {
+          const lastMessageTimestamps: {[key: string]: number} = {};
+          messages.forEach(msg => {
+              if (!msg.deletedFor?.includes(loggedInUser.id)) {
+                const timestamp = msg.timestamp.getTime();
+                const otherUserId = msg.senderId === loggedInUser.id ? msg.receiverId : msg.senderId;
+                if (!lastMessageTimestamps[otherUserId] || timestamp > lastMessageTimestamps[otherUserId]) {
+                    lastMessageTimestamps[otherUserId] = timestamp;
+                }
               }
+          });
+
+          const sortedConversations = [...conversationUsers].sort((a, b) => {
+              const lastMessageA = lastMessageTimestamps[a.id] || 0;
+              const lastMessageB = lastMessageTimestamps[b.id] || 0;
+              return lastMessageB - lastMessageA;
+          });
+
+          if (sortedConversations.length > 0) {
+            setSelectedUser(sortedConversations[0]);
           }
-          return currentAllUsers;
-      });
-    });
+      }
+  }, [messages, allUsers, loggedInUser.id, isMobile, selectedUser]);
 
 
-    return () => {
-      unsubscribeUsers();
-      unsubscribeMessages();
-    };
-  }, [loggedInUser.id, isMobile, selectedUser]);
+  // Mark messages as read
+  useEffect(() => {
+    if (!selectedUser || !loggedInUser.id) return;
+
+    const unreadMessages = messages.filter(m => 
+        m.receiverId === loggedInUser.id && 
+        m.senderId === selectedUser.id && 
+        !m.read
+    );
+
+    if (unreadMessages.length > 0) {
+        const batch = writeBatch(db);
+        unreadMessages.forEach(message => {
+            const messageRef = doc(db, 'messages', message.id);
+            batch.update(messageRef, { read: true });
+        });
+        batch.commit().catch(console.error);
+    }
+  }, [selectedUser, messages, loggedInUser.id]);
 
 
   // Typing status management
@@ -412,3 +421,5 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
     </div>
   );
 }
+
+    
