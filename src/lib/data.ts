@@ -7,7 +7,7 @@ export type User = {
 
 export type Message = {
   id: string;
-  conversationId?: string;
+  conversationId: string;
   senderId: string;
   receiverId: string;
   content: string;
@@ -15,5 +15,5 @@ export type Message = {
   read: boolean;
   reactions: { emoji: string; userId: string }[];
   deletedFor?: string[];
-  participants?: string[];
+  participants: string[];
 };
