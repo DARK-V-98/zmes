@@ -1,21 +1,29 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import type { Message, User } from '@/lib/data';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { ScrollArea } from './ui/scroll-area';
-import { MessageSquarePlus, Search, Download } from 'lucide-react';
+import { MessageSquarePlus, Search, Download, Settings, Camera, LogOut, User as UserIcon } from 'lucide-react';
 import { Input } from './ui/input';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from './ui/dialog';
 import { usePWAInstall } from './pwa-install-provider';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from './ui/tooltip';
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { auth } from '@/lib/firebase';
+import { useRouter } from 'next/navigation';
+import { Label } from './ui/label';
+import { useToast } from '@/hooks/use-toast';
+import { updateUserProfile } from '@/app/actions';
 
 interface SidebarProps {
   users: User[];
@@ -86,6 +94,150 @@ const NewChatDialog = ({ users, onSelectUser, open, setOpen }: { users: User[], 
     </Dialog>
   );
 }
+
+const ProfileSettingsDialog = ({ user, open, setOpen }: { user: User; open: boolean, setOpen: (open: boolean) => void; }) => {
+  const [name, setName] = useState(user.name);
+  const [imagePreview, setImagePreview] = useState<string | null>(user.avatar);
+  const [imageData, setImageData] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const result = reader.result as string;
+        setImagePreview(result);
+        setImageData(result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    const formData = new FormData();
+    formData.append('name', name);
+    if (imageData) {
+      formData.append('image', imageData);
+    }
+
+    const result = await updateUserProfile(formData);
+
+    if (result.success) {
+      toast({
+        title: 'Success',
+        description: result.message,
+      });
+      setOpen(false);
+    } else {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: result.message,
+      });
+    }
+
+    setLoading(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit Profile</DialogTitle>
+          <DialogDescription>
+            Make changes to your profile here. Click save when you're done.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4 py-4">
+          <div className="flex items-center space-x-4">
+            <div className="relative">
+              <Avatar className="h-20 w-20">
+                <AvatarImage src={imagePreview || undefined} alt={name} />
+                <AvatarFallback>{name.charAt(0)}</AvatarFallback>
+              </Avatar>
+              <Button
+                type="button"
+                size="icon"
+                className="absolute bottom-0 right-0 rounded-full h-7 w-7"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Camera className="h-4 w-4" />
+              </Button>
+              <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                accept="image/*"
+                onChange={handleImageChange}
+              />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="name">Name</Label>
+            <Input
+              id="name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+            />
+          </div>
+          <DialogFooter>
+            <Button type="submit" disabled={loading}>
+              {loading ? 'Saving...' : 'Save changes'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+
+const UserMenu = ({ user }: { user: User }) => {
+    const router = useRouter();
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+    const handleLogout = async () => {
+        await auth.signOut();
+        router.push('/login');
+    };
+
+    return (
+        <>
+            <Popover>
+                <PopoverTrigger asChild>
+                    <Button variant="ghost" className="w-full h-auto justify-start items-center p-3 text-left rounded-lg">
+                        <Avatar className="h-10 w-10 mr-4 relative">
+                          <AvatarImage src={user.avatar} alt={user.name} />
+                          <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 overflow-hidden">
+                            <p className="font-semibold truncate">{user.name}</p>
+                            <p className="text-sm text-muted-foreground">My Account</p>
+                        </div>
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-60 p-2">
+                    <div className="flex flex-col gap-1">
+                        <Button variant="ghost" className="w-full justify-start" onClick={() => setIsSettingsOpen(true)}>
+                           <UserIcon className="mr-2 h-4 w-4" /> Edit Profile
+                        </Button>
+                        <Button variant="ghost" className="w-full justify-start" onClick={handleLogout}>
+                            <LogOut className="mr-2 h-4 w-4" /> Logout
+                        </Button>
+                    </div>
+                </PopoverContent>
+            </Popover>
+            <ProfileSettingsDialog user={user} open={isSettingsOpen} setOpen={setIsSettingsOpen} />
+        </>
+    );
+};
 
 
 export function Sidebar({ users, allUsers, messages, loggedInUser, selectedUser, onSelectUser }: SidebarProps) {
@@ -165,6 +317,9 @@ export function Sidebar({ users, allUsers, messages, loggedInUser, selectedUser,
           ))}
         </div>
       </ScrollArea>
+       <div className="p-2 border-t">
+        <UserMenu user={loggedInUser} />
+      </div>
     </div>
   );
 }

@@ -25,6 +25,7 @@ import {
   getDocs,
 } from 'firebase/firestore';
 import { useMediaQuery } from '@/hooks/use-media-query';
+import { useAuth } from './auth-provider';
 
 interface ZMessengerProps {
   loggedInUser: User;
@@ -34,7 +35,7 @@ const getConversationId = (userId1: string, userId2: string) => {
   return [userId1, userId2].sort().join('_');
 };
 
-export function ZMessenger({ loggedInUser }: ZMessengerProps) {
+export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [conversations, setConversations] = useState<User[]>([]);
@@ -42,6 +43,21 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
   const isMobile = useMediaQuery('(max-width: 768px)');
   const [view, setView] = useState<'sidebar' | 'chat'>('sidebar');
   const [isTyping, setIsTyping] = useState(false);
+  const { user: authUser } = useAuth();
+  const [loggedInUser, setLoggedInUser] = useState(initialUser);
+
+  // Keep loggedInUser state in sync with AuthProvider
+  useEffect(() => {
+    if (authUser) {
+      const updatedUser = {
+        id: authUser.uid,
+        name: authUser.displayName || 'You',
+        avatar: authUser.photoURL || `https://picsum.photos/seed/${authUser.uid}/200/200`,
+      };
+      setLoggedInUser(updatedUser);
+    }
+  }, [authUser]);
+
 
   // User presence management
   useEffect(() => {
