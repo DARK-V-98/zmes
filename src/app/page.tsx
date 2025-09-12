@@ -1,3 +1,4 @@
+
 'use client';
 
 import { ZMessenger } from '@/components/z-messenger';
@@ -26,7 +27,7 @@ export default function Home() {
             alt="Z Messenger Logo"
             width={120}
             height={30}
-            className="rounded-lg h-auto"
+            className="h-auto"
             priority
           />
         </div>
@@ -42,9 +43,11 @@ export default function Home() {
 
   return (
     <main className="h-screen bg-background text-foreground overflow-hidden">
-      <ZMessenger
-        loggedInUser={loggedInUser}
-      />
+       <div className="absolute inset-0">
+        <ZMessenger
+          loggedInUser={loggedInUser}
+        />
+      </div>
     </main>
   );
 }
