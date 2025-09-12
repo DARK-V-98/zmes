@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { ScrollArea } from './ui/scroll-area';
-import { MessageSquarePlus, Search, Download, Settings, Camera, LogOut, User as UserIcon, Smile, Trash2 } from 'lucide-react';
+import { MessageSquarePlus, Search, Download, Settings, Camera, LogOut, User as UserIcon, Smile, Trash2, Share } from 'lucide-react';
 import { Input } from './ui/input';
 import {
   Dialog,
@@ -44,6 +44,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { useMediaQuery } from '@/hooks/use-media-query';
 
 interface SidebarProps {
   conversations: User[];
@@ -57,14 +58,28 @@ interface SidebarProps {
   onSearchTermChange: (term: string) => void;
 }
 
-const NewChatDialog = ({ users, conversations, onSelectUser }: { users: User[], conversations: User[], onSelectUser: (user: User) => void; }) => {
+const IOSInstallInstructions = ({ open, onOpenChange }: { open: boolean, onOpenChange: (open: boolean) => void }) => (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Install App on your iPhone or iPad</DialogTitle>
+                <DialogDescription>
+                    To install the app, tap the Share button in Safari and then "Add to Home Screen".
+                </DialogDescription>
+            </DialogHeader>
+            <div className="py-4 text-center">
+                <p>1. Tap the <Share className="inline-block h-5 w-5 mx-1" /> icon in the menu bar.</p>
+                <p className="mt-4">2. Scroll down and tap on "Add to Home Screen".</p>
+            </div>
+        </DialogContent>
+    </Dialog>
+);
+
+const NewChatDialog = ({ users, onSelectUser }: { users: User[], onSelectUser: (user: User) => void; }) => {
   const [open, setOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
-  const conversationUserIds = new Set(conversations.map(c => c.id));
-  const availableUsers = users.filter(user => !conversationUserIds.has(user.id));
-
-  const filteredUsers = availableUsers.filter(user =>
+  const filteredUsers = users.filter(user =>
     user.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
   
@@ -410,6 +425,20 @@ const ConversationItem = ({
 export function Sidebar({ conversations, allUsers, messages, loggedInUser, selectedUser, onSelectUser, onClearHistory, searchTerm, onSearchTermChange }: SidebarProps) {
   const otherUsers = allUsers.filter(u => u.id !== loggedInUser.id);
   const { canInstall, install } = usePWAInstall();
+  const [isIOSInstallOpen, setIsIOSInstallOpen] = useState(false);
+  const isMobile = useMediaQuery('(max-width: 768px)');
+  
+  const isIOS = isMobile && /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const showInstallButton = isMobile || canInstall;
+
+  const handleInstallClick = () => {
+    if (canInstall) {
+        install();
+    } else if (isIOS) {
+        setIsIOSInstallOpen(true);
+    }
+  };
+
 
   const conversationDetails = conversations.map(user => {
     const userMessages = messages
@@ -436,11 +465,11 @@ export function Sidebar({ conversations, allUsers, messages, loggedInUser, selec
       <div className="p-4 border-b flex justify-between items-center">
         <Image src="/zm.png" alt="Z Messenger Logo" width={100} height={25} className="rounded-lg" />
         <div className="flex items-center gap-1">
-          {canInstall && (
+          {showInstallButton && (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" className="rounded-full" onClick={install}>
+                  <Button variant="ghost" size="icon" className="rounded-full" onClick={handleInstallClick}>
                     <Download />
                   </Button>
                 </TooltipTrigger>
@@ -448,7 +477,7 @@ export function Sidebar({ conversations, allUsers, messages, loggedInUser, selec
               </Tooltip>
             </TooltipProvider>
           )}
-          <NewChatDialog users={otherUsers} conversations={conversations} onSelectUser={onSelectUser} />
+          <NewChatDialog users={otherUsers} onSelectUser={onSelectUser} />
         </div>
       </div>
        <div className="p-4 border-b">
@@ -484,6 +513,7 @@ export function Sidebar({ conversations, allUsers, messages, loggedInUser, selec
        <div className="p-2 border-t">
         <UserMenu user={loggedInUser} />
       </div>
+      <IOSInstallInstructions open={isIOSInstallOpen} onOpenChange={setIsIOSInstallOpen} />
     </div>
   );
 }
