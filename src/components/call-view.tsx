@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -96,22 +97,22 @@ const ActiveCall = ({ call, onEnd, localStream, remoteStream }: { call: Call; on
     };
 
     return (
-        <div className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm flex items-center justify-center">
+        <div className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
             <Card className="w-full max-w-sm shadow-2xl animate-in fade-in-0 zoom-in-95">
-                <CardContent className="p-8 flex flex-col items-center justify-center gap-6">
-                    <Avatar className="h-28 w-28 border-4 border-primary">
+                <CardContent className="p-6 sm:p-8 flex flex-col items-center justify-center gap-6">
+                    <Avatar className="h-24 w-24 sm:h-28 sm:w-28 border-4 border-primary">
                         <AvatarImage src={otherUser.avatar} />
-                        <AvatarFallback className="text-4xl">{otherUser.name.charAt(0)}</AvatarFallback>
+                        <AvatarFallback className="text-3xl sm:text-4xl">{otherUser.name.charAt(0)}</AvatarFallback>
                     </Avatar>
                     <div className="text-center">
-                        <p className="text-2xl font-bold">{otherUser.name}</p>
+                        <p className="text-xl sm:text-2xl font-bold">{otherUser.name}</p>
                         <p className="text-muted-foreground">{call.status === 'ringing' ? 'Ringing...' : formatDuration(duration)}</p>
                     </div>
                     <div className="flex items-center justify-center gap-4 mt-4">
                         <Button
                             variant="outline"
                             size="icon"
-                            className={cn("rounded-full h-14 w-14", isMuted && "bg-primary text-primary-foreground")}
+                            className={cn("rounded-full h-12 w-12 sm:h-14 sm:w-14", isMuted && "bg-primary text-primary-foreground")}
                             onClick={handleMuteToggle}
                         >
                             {isMuted ? <MicOff /> : <Mic />}
@@ -119,7 +120,7 @@ const ActiveCall = ({ call, onEnd, localStream, remoteStream }: { call: Call; on
                         <Button
                             variant="destructive"
                             size="icon"
-                            className="rounded-full h-16 w-16"
+                            className="rounded-full h-14 w-14 sm:h-16 sm:w-16"
                             onClick={onEnd}
                         >
                             <PhoneOff size={28} />
