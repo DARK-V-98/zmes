@@ -29,7 +29,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 import { AlertDialogTrigger } from '@radix-ui/react-alert-dialog';
 
 
@@ -48,23 +47,6 @@ interface ChatProps {
   onTyping: (isTyping: boolean) => void;
   onStartCall: (user: User) => void;
 }
-
-const IOSInstallInstructions = ({ open, onOpenChange }: { open: boolean, onOpenChange: (open: boolean) => void }) => (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent>
-            <DialogHeader>
-                <DialogTitle>Install App on your Device</DialogTitle>
-                <DialogDescription>
-                    To install the app, tap the Share button in your browser and then "Add to Home Screen".
-                </DialogDescription>
-            </DialogHeader>
-            <div className="py-4 text-center">
-                <p>1. Tap the <Share className="inline-block h-5 w-5 mx-1" /> icon in the menu bar.</p>
-                <p className="mt-4">2. Scroll down and tap on "Add to Home Screen".</p>
-            </div>
-        </DialogContent>
-    </Dialog>
-);
 
 const ChatHeader = ({ user, onBack, isMobile, onClearHistory, onStartCall }: { user: User, onBack?: () => void, isMobile: boolean, onClearHistory: () => void, onStartCall: (user: User) => void }) => {
   const [isAlertOpen, setIsAlertOpen] = useState(false);
