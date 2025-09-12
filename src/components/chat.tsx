@@ -30,11 +30,11 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
+import { AlertDialogTrigger } from '@radix-ui/react-alert-dialog';
 
 
 interface ChatProps {
@@ -70,7 +70,7 @@ const IOSInstallInstructions = ({ open, onOpenChange }: { open: boolean, onOpenC
     </Dialog>
 );
 
-const BackgroundChangerDialog = ({ conversationId }: { conversationId: string }) => {
+const BackgroundChangerDialog = ({ loggedInUserId, conversationId }: { loggedInUserId: string, conversationId: string }) => {
     const [open, setOpen] = useState(false);
     const [imagePreview, setImagePreview] = useState<string | null>(null);
     const [imageData, setImageData] = useState<string | null>(null);
@@ -96,9 +96,13 @@ const BackgroundChangerDialog = ({ conversationId }: { conversationId: string })
             toast({ variant: 'destructive', title: 'Error', description: 'Please select an image.' });
             return;
         }
+        if (!loggedInUserId) {
+            toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in.' });
+            return;
+        }
 
         setLoading(true);
-        const result = await updateChatBackground(conversationId, imageData);
+        const result = await updateChatBackground(loggedInUserId, conversationId, imageData);
 
         if (result.success) {
             toast({ title: 'Success', description: result.message });
@@ -160,19 +164,20 @@ const BackgroundChangerDialog = ({ conversationId }: { conversationId: string })
 };
 
 
-const ChatHeader = ({ user, onBack, isMobile, onClearHistory, onStartCall, conversationId }: { user: User, onBack?: () => void, isMobile: boolean, onClearHistory: () => void, onStartCall: (user: User) => void, conversationId: string }) => {
+const ChatHeader = ({ loggedInUserId, user, onBack, isMobile, onClearHistory, onStartCall, conversationId }: { loggedInUserId: string, user: User, onBack?: () => void, isMobile: boolean, onClearHistory: () => void, onStartCall: (user: User) => void, conversationId: string }) => {
   const { canInstall, install } = usePWAInstall();
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [isInstallSheetOpen, setIsInstallSheetOpen] = useState(false);
   
-  const isIos = () => /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isIos = () => /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+  const isMobileDevice = () => /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
   
-  const showInstallButton = canInstall || isIos();
+  const showInstallButton = canInstall || isMobileDevice();
   
- const handleInstallClick = () => {
+  const handleInstallClick = () => {
     if (canInstall) {
       install();
-    } else if (isIos()) {
+    } else if (isIos() || isMobileDevice()) {
       setIsInstallSheetOpen(true);
     }
   };
@@ -230,7 +235,7 @@ const ChatHeader = ({ user, onBack, isMobile, onClearHistory, onStartCall, conve
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <BackgroundChangerDialog conversationId={conversationId} />
+            <BackgroundChangerDialog loggedInUserId={loggedInUserId} conversationId={conversationId} />
              <DropdownMenuSeparator />
              <AlertDialogTrigger asChild>
               <DropdownMenuItem className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive">
@@ -517,7 +522,7 @@ export function Chat({ user, loggedInUser, messages, onSendMessage, onUpdateReac
           </>
         )}
       <div className="relative z-10 flex flex-col h-full">
-        <ChatHeader user={user} onBack={onBack} isMobile={isMobile} onClearHistory={handleClearHistory} onStartCall={onStartCall} conversationId={conversationId} />
+        <ChatHeader loggedInUserId={loggedInUser.id} user={user} onBack={onBack} isMobile={isMobile} onClearHistory={handleClearHistory} onStartCall={onStartCall} conversationId={conversationId} />
         <ChatMessages messages={messages} loggedInUser={loggedInUser} allUsers={allUsers} isTyping={isTyping} onUpdateReaction={onUpdateReaction} />
         <SmartReplies lastMessage={lastMessageFromOtherUser || null} onSelectReply={handleSelectReply}/>
         <ChatInput onSendMessage={onSendMessage} onTyping={onTyping} />

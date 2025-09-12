@@ -91,18 +91,18 @@ const NewChatDialog = ({ users, onSelectUser }: { users: User[], onSelectUser: (
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <TooltipProvider>
-        <Tooltip>
-          <DialogTrigger asChild>
+      <DialogTrigger asChild>
+        <TooltipProvider>
+          <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="rounded-full">
-                <MessageSquarePlus />
-              </Button>
+                <Button variant="ghost" size="icon" className="rounded-full">
+                    <MessageSquarePlus />
+                </Button>
             </TooltipTrigger>
-          </DialogTrigger>
-          <TooltipContent>New Chat</TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+            <TooltipContent>New Chat</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </DialogTrigger>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Start a new chat</DialogTitle>
@@ -178,6 +178,14 @@ const ProfileSettingsDialog = ({ user, open, setOpen }: { user: User; open: bool
       });
       return;
     }
+    if (!user.id) {
+       toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'You must be logged in to update your profile.',
+      });
+      return;
+    }
 
     setLoading(true);
 
@@ -187,7 +195,7 @@ const ProfileSettingsDialog = ({ user, open, setOpen }: { user: User; open: bool
       formData.append('image', imageData);
     }
 
-    const result = await updateUserProfile(formData);
+    const result = await updateUserProfile(user.id, formData);
 
     if (result.success) {
       toast({
@@ -428,12 +436,15 @@ export function Sidebar({ conversations, allUsers, messages, loggedInUser, selec
   const [isInstallSheetOpen, setIsInstallSheetOpen] = useState(false);
   const isMobile = useMediaQuery('(max-width: 768px)');
   
-  const showInstallButton = isMobile || canInstall;
+  const isIos = () => /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+  const isMobileDevice = () => /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+  const showInstallButton = canInstall || isMobileDevice();
 
   const handleInstallClick = () => {
     if (canInstall) {
         install();
-    } else if (isMobile) {
+    } else if (isIos() || isMobileDevice()) {
         setIsInstallSheetOpen(true);
     }
   };
