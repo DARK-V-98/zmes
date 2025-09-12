@@ -30,23 +30,7 @@ import {
 import { AlertDialogTrigger } from '@radix-ui/react-alert-dialog';
 
 
-interface ChatProps {
-  user: User;
-  loggedInUser: User;
-  messages: Message[];
-  onSendMessage: (content: string) => void;
-  onUpdateMessage: (messageId: string, newContent: string) => void;
-  onDeleteMessage: (messageId: string) => void;
-  onUpdateReaction: (messageId: string, emoji: string) => void;
-  onClearHistory: (userId: string) => void;
-  onBack?: () => void;
-  isMobile: boolean;
-  isTyping: boolean;
-  onTyping: (isTyping: boolean) => void;
-  onStartCall: (user: User) => void;
-}
-
-const ChatHeader = ({ user, onBack, isMobile, onClearHistory, onStartCall }: { user: User, onBack?: () => void, isMobile: boolean, onClearHistory: () => void, onStartCall: (user: User) => void }) => {
+export const ChatHeader = ({ user, onBack, isMobile, onClearHistory, onStartCall }: { user: User, onBack?: () => void, isMobile: boolean, onClearHistory: () => void, onStartCall: (user: User) => void }) => {
   const [isAlertOpen, setIsAlertOpen] = useState(false);
 
   const handleClearHistory = () => {
@@ -257,7 +241,7 @@ const TypingIndicator = () => (
 );
 
 
-const ChatMessages = ({ messages, loggedInUser, allUsers, isTyping, onUpdateReaction, onEdit, onDelete }: { 
+export const ChatMessages = ({ messages, loggedInUser, allUsers, isTyping, onUpdateReaction, onEdit, onDelete }: { 
     messages: Message[]; 
     loggedInUser: User; 
     allUsers: User[], 
@@ -317,7 +301,7 @@ const ChatMessages = ({ messages, loggedInUser, allUsers, isTyping, onUpdateReac
 };
 
 
-const ChatInput = ({ onSendMessage, onUpdateMessage, onTyping, editingMessage, onCancelEdit }: { 
+export const ChatInput = ({ onSendMessage, onUpdateMessage, onTyping, editingMessage, onCancelEdit }: { 
     onSendMessage: (content: string) => void;
     onUpdateMessage: (messageId: string, newContent: string) => void;
     onTyping: (isTyping: boolean) => void;
@@ -411,49 +395,3 @@ const ChatInput = ({ onSendMessage, onUpdateMessage, onTyping, editingMessage, o
     </div>
   );
 };
-
-export function Chat({ user, loggedInUser, messages, onSendMessage, onUpdateMessage, onDeleteMessage, onUpdateReaction, onClearHistory, onBack, isMobile, isTyping, onTyping, onStartCall }: ChatProps) {
-  const allUsers = [loggedInUser, user];
-  const [editingMessage, setEditingMessage] = useState<Message | null>(null);
-  
-  const handleClearHistory = () => {
-    onClearHistory(user.id);
-  }
-  
-  const handleEdit = (message: Message) => {
-      setEditingMessage(message);
-  }
-  
-  const handleCancelEdit = () => {
-      setEditingMessage(null);
-  }
-
-  const handleUpdateMessage = (messageId: string, newContent: string) => {
-      onUpdateMessage(messageId, newContent);
-      setEditingMessage(null);
-  }
-
-  return (
-    <div className="flex h-full flex-col bg-background w-full">
-      <ChatHeader user={user} onBack={onBack} isMobile={isMobile} onClearHistory={handleClearHistory} onStartCall={onStartCall} />
-      <div className="flex-1 overflow-y-auto">
-        <ChatMessages 
-            messages={messages} 
-            loggedInUser={loggedInUser} 
-            allUsers={allUsers} 
-            isTyping={isTyping} 
-            onUpdateReaction={onUpdateReaction}
-            onEdit={handleEdit}
-            onDelete={onDeleteMessage}
-        />
-      </div>
-      <ChatInput 
-          onSendMessage={onSendMessage} 
-          onUpdateMessage={handleUpdateMessage}
-          onTyping={onTyping} 
-          editingMessage={editingMessage}
-          onCancelEdit={handleCancelEdit}
-      />
-    </div>
-  );
-}

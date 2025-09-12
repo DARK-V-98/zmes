@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { Message, User } from '@/lib/data';
 import { Sidebar } from '@/components/sidebar';
-import { Chat } from '@/components/chat';
+import { ChatHeader, ChatMessages, ChatInput } from '@/components/chat';
 import { Card } from '@/components/ui/card';
 import { db } from '@/lib/firebase';
 import {
@@ -52,6 +52,8 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
   const [activeCall, setActiveCall] = useState<Call | null>(null);
   const [incomingCall, setIncomingCall] = useState<Call | null>(null);
   const [callId, setCallId] = useState<string | null>(null);
+  const [editingMessage, setEditingMessage] = useState<Message | null>(null);
+
 
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
@@ -403,10 +405,19 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
     setLocalStreamState(null);
     setRemoteStreamState(null);
   };
+  
+  const handleEditMessage = (message: Message) => {
+    setEditingMessage(message);
+  }
+
+  const handleCancelEdit = () => {
+      setEditingMessage(null);
+  }
 
   const handleUpdateMessage = async (messageId: string, newContent: string) => {
     try {
       await updateMessage(messageId, newContent);
+      setEditingMessage(null);
     } catch (error) {
       console.error("Error updating message:", error);
     }
@@ -439,24 +450,35 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
           />
         }
         { (viewToShow === 'chat' || !isMobile) &&
-          <div className="flex-1 flex flex-col">
+          <div className="flex-1 flex flex-col bg-background w-full">
             {selectedUser ? (
-              <Chat
-                key={selectedUser.id}
-                user={selectedUser}
-                loggedInUser={loggedInUser}
-                messages={currentChatMessages}
-                onSendMessage={handleSendMessage}
-                onUpdateMessage={handleUpdateMessage}
-                onDeleteMessage={handleDeleteMessage}
-                onUpdateReaction={handleUpdateReaction}
-                onClearHistory={handleClearHistory}
-                onBack={() => setSelectedUser(null)}
-                isMobile={isMobile}
-                isTyping={isTyping}
-                onTyping={handleTyping}
-                onStartCall={handleStartCall}
-              />
+              <>
+                <ChatHeader 
+                  user={selectedUser} 
+                  onBack={() => setSelectedUser(null)} 
+                  isMobile={isMobile} 
+                  onClearHistory={() => handleClearHistory(selectedUser.id)} 
+                  onStartCall={handleStartCall} 
+                />
+                <div className="flex-1 overflow-y-auto">
+                    <ChatMessages 
+                        messages={currentChatMessages} 
+                        loggedInUser={loggedInUser} 
+                        allUsers={[loggedInUser, ...allUsers]} 
+                        isTyping={isTyping} 
+                        onUpdateReaction={handleUpdateReaction}
+                        onEdit={handleEditMessage}
+                        onDelete={handleDeleteMessage}
+                    />
+                </div>
+                <ChatInput 
+                    onSendMessage={handleSendMessage} 
+                    onUpdateMessage={handleUpdateMessage}
+                    onTyping={handleTyping} 
+                    editingMessage={editingMessage}
+                    onCancelEdit={handleCancelEdit}
+                />
+              </>
             ) : (
               <div className="hidden md:flex h-full items-center justify-center bg-card">
                 <p className="text-muted-foreground">Select a conversation or start a new one</p>
