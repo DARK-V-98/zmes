@@ -194,7 +194,7 @@ const ChatMessage = ({
     return (
       <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
         <div
-          className={cn('group w-full my-3 sm:my-4 flex gap-2 sm:gap-3', isSender && 'justify-end')}
+          className={cn('group my-3 sm:my-4 flex gap-2 sm:gap-3', isSender ? 'justify-end' : 'justify-start')}
           onMouseEnter={() => setShowActions(true)}
           onMouseLeave={() => setShowActions(false)}
         >
@@ -226,13 +226,6 @@ const ChatMessage = ({
               </div>
           </div>
           
-          {isSender && (
-            <Avatar className="h-8 w-8 sm:h-10 sm:w-10 self-end">
-              <AvatarImage src={sender.avatar} alt={sender.name} data-ai-hint="profile picture" />
-              <AvatarFallback>{sender.name.charAt(0)}</AvatarFallback>
-            </Avatar>
-          )}
-
           <div className={cn("self-center transition-opacity duration-200 flex", showActions ? "opacity-100" : "opacity-0")}>
             <EmojiPicker onSelectEmoji={(emoji) => onUpdateReaction(message.id, emoji)} />
              {isSender && !message.isDeleted && (
@@ -394,13 +387,12 @@ const SmartReplies = ({ lastMessage, onSelectReply }: { lastMessage: Message | n
   );
 };
 
-const ChatInput = ({ onSendMessage, onUpdateMessage, onTyping, editingMessage, onCancelEdit, loggedInUser }: { 
+const ChatInput = ({ onSendMessage, onUpdateMessage, onTyping, editingMessage, onCancelEdit }: { 
     onSendMessage: (content: string) => void;
     onUpdateMessage: (messageId: string, newContent: string) => void;
     onTyping: (isTyping: boolean) => void;
     editingMessage: Message | null;
     onCancelEdit: () => void;
-    loggedInUser: User;
 }) => {
   const [message, setMessage] = useState('');
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -545,7 +537,6 @@ export function Chat({ user, loggedInUser, messages, onSendMessage, onUpdateMess
             onTyping={onTyping} 
             editingMessage={editingMessage}
             onCancelEdit={handleCancelEdit}
-            loggedInUser={loggedInUser}
         />
       </div>
     </div>

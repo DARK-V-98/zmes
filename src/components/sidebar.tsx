@@ -325,7 +325,7 @@ const UserMenu = ({ user }: { user: User }) => {
         <>
             <Popover>
                 <PopoverTrigger asChild>
-                    <Button variant="ghost" className="w-full h-auto justify-start items-center p-3 text-left rounded-lg">
+                    <Button variant="ghost" className="w-full h-auto justify-start items-center p-2 sm:p-3 text-left rounded-lg">
                         <Avatar className="h-10 w-10 mr-4 relative">
                           <AvatarImage src={user.avatar} alt={user.name} />
                           <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
@@ -387,7 +387,7 @@ const ConversationItem = ({
             )}
             onClick={() => onSelectUser(user)}
           >
-            <Avatar className="h-12 w-12 mr-4 relative">
+            <Avatar className="h-10 w-10 sm:h-12 sm:w-12 mr-4 relative">
               <AvatarImage src={user.avatar} alt={user.name} data-ai-hint="profile picture" />
               <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
               {user.isOnline && (
