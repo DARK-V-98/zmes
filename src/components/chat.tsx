@@ -8,9 +8,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Check, CheckCheck, MoreVertical, Paperclip, Send, SmilePlus, ArrowLeft, Download, Trash2, Phone, Share, ImageIcon, Upload } from 'lucide-react';
+import { Check, CheckCheck, MoreVertical, Paperclip, Send, SmilePlus, ArrowLeft, Download, Trash2, Phone, Share } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { generateSmartReplies, updateChatBackground } from '@/app/actions';
+import { generateSmartReplies } from '@/app/actions';
 import { Skeleton } from './ui/skeleton';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { usePWAInstall } from './pwa-install-provider';
@@ -19,7 +19,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
 import {
   AlertDialog,
@@ -31,9 +30,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
-import Image from 'next/image';
-import { useToast } from '@/hooks/use-toast';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 import { AlertDialogTrigger } from '@radix-ui/react-alert-dialog';
 
 
@@ -49,8 +46,6 @@ interface ChatProps {
   isTyping: boolean;
   onTyping: (isTyping: boolean) => void;
   onStartCall: (user: User) => void;
-  conversationId: string;
-  backgroundUrl: string | null;
 }
 
 const IOSInstallInstructions = ({ open, onOpenChange }: { open: boolean, onOpenChange: (open: boolean) => void }) => (
@@ -70,101 +65,7 @@ const IOSInstallInstructions = ({ open, onOpenChange }: { open: boolean, onOpenC
     </Dialog>
 );
 
-const BackgroundChangerDialog = ({ loggedInUserId, conversationId }: { loggedInUserId: string, conversationId: string }) => {
-    const [open, setOpen] = useState(false);
-    const [imagePreview, setImagePreview] = useState<string | null>(null);
-    const [imageData, setImageData] = useState<string | null>(null);
-    const [loading, setLoading] = useState(false);
-    const fileInputRef = useRef<HTMLInputElement>(null);
-    const { toast } = useToast();
-
-    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                const result = reader.result as string;
-                setImagePreview(result);
-                setImageData(result);
-            };
-            reader.readAsDataURL(file);
-        }
-    };
-
-    const handleSubmit = async () => {
-        if (!imageData) {
-            toast({ variant: 'destructive', title: 'Error', description: 'Please select an image.' });
-            return;
-        }
-        if (!loggedInUserId) {
-            toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in.' });
-            return;
-        }
-
-        setLoading(true);
-        const result = await updateChatBackground(loggedInUserId, conversationId, imageData);
-
-        if (result.success) {
-            toast({ title: 'Success', description: result.message });
-            setOpen(false);
-            setImagePreview(null);
-            setImageData(null);
-        } else {
-            toast({ variant: 'destructive', title: 'Error', description: result.message });
-        }
-        setLoading(false);
-    };
-
-    return (
-        <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-                <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-pointer">
-                    <ImageIcon className="mr-2 h-4 w-4" />
-                    <span>Change Background</span>
-                </DropdownMenuItem>
-            </DialogTrigger>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Change Chat Background</DialogTitle>
-                    <DialogDescription>
-                        Select an image to use as the background for this chat. This will be visible to both participants.
-                    </DialogDescription>
-                </DialogHeader>
-                <div className="py-4 space-y-4">
-                    <div 
-                        className="relative flex items-center justify-center h-48 w-full border-2 border-dashed rounded-lg cursor-pointer"
-                        onClick={() => fileInputRef.current?.click()}
-                    >
-                        {imagePreview ? (
-                            <Image src={imagePreview} alt="Background preview" layout="fill" objectFit="cover" className="rounded-lg" />
-                        ) : (
-                            <div className="text-center text-muted-foreground">
-                                <Upload className="mx-auto h-8 w-8 mb-2" />
-                                <p>Click to upload an image</p>
-                            </div>
-                        )}
-                    </div>
-                     <input
-                        type="file"
-                        ref={fileInputRef}
-                        className="hidden"
-                        accept="image/*"
-                        onChange={handleImageChange}
-                    />
-                </div>
-                <DialogFooter>
-                    <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-                    <Button onClick={handleSubmit} disabled={loading || !imageData}>
-                        {loading ? 'Uploading...' : 'Set Background'}
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    )
-};
-
-
-const ChatHeader = ({ loggedInUserId, user, onBack, isMobile, onClearHistory, onStartCall, conversationId }: { loggedInUserId: string, user: User, onBack?: () => void, isMobile: boolean, onClearHistory: () => void, onStartCall: (user: User) => void, conversationId: string }) => {
+const ChatHeader = ({ user, onBack, isMobile, onClearHistory, onStartCall }: { user: User, onBack?: () => void, isMobile: boolean, onClearHistory: () => void, onStartCall: (user: User) => void }) => {
   const { canInstall, install } = usePWAInstall();
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [isInstallSheetOpen, setIsInstallSheetOpen] = useState(false);
@@ -235,8 +136,6 @@ const ChatHeader = ({ loggedInUserId, user, onBack, isMobile, onClearHistory, on
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <BackgroundChangerDialog loggedInUserId={loggedInUserId} conversationId={conversationId} />
-             <DropdownMenuSeparator />
              <AlertDialogTrigger asChild>
               <DropdownMenuItem className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive">
                   <Trash2 className="mr-2 h-4 w-4" />
@@ -309,7 +208,7 @@ const ChatMessage = ({ message, isSender, sender, onUpdateReaction }: { message:
           <AvatarImage src={sender.avatar} alt={sender.name} data-ai-hint="profile picture" />
           <AvatarFallback>{sender.name.charAt(0)}</AvatarFallback>
         </Avatar>
-        <div className={cn('relative flex flex-col max-w-[85%] sm:max-w-[80%]', isSender && 'items-end')}>
+        <div className={cn('relative max-w-[85%] sm:max-w-[80%]', isSender && 'items-end')}>
             <div className={cn(
                 'px-3 py-2 sm:px-4 rounded-2xl gap-2',
                 isSender ? 'bg-primary text-primary-foreground rounded-br-none' : 'bg-card border rounded-bl-none'
@@ -498,7 +397,7 @@ const ChatInput = ({ onSendMessage, onTyping }: { onSendMessage: (content: strin
   );
 };
 
-export function Chat({ user, loggedInUser, messages, onSendMessage, onUpdateReaction, onClearHistory, onBack, isMobile, isTyping, onTyping, onStartCall, conversationId, backgroundUrl }: ChatProps) {
+export function Chat({ user, loggedInUser, messages, onSendMessage, onUpdateReaction, onClearHistory, onBack, isMobile, isTyping, onTyping, onStartCall }: ChatProps) {
   const allUsers = [loggedInUser, user];
   
   const visibleMessages = messages.filter(m => !m.deletedFor?.includes(loggedInUser.id));
@@ -516,19 +415,11 @@ export function Chat({ user, loggedInUser, messages, onSendMessage, onUpdateReac
   }
 
   return (
-    <div className="flex h-full flex-col bg-card w-full relative">
-       {backgroundUrl && (
-          <>
-            <Image src={backgroundUrl} layout="fill" objectFit="cover" alt="Chat background" className="absolute inset-0 z-0" />
-            <div className="absolute inset-0 bg-background/70 backdrop-blur-sm z-0"></div>
-          </>
-        )}
-      <div className="relative z-10 flex flex-col h-full">
-        <ChatHeader loggedInUserId={loggedInUser.id} user={user} onBack={onBack} isMobile={isMobile} onClearHistory={handleClearHistory} onStartCall={onStartCall} conversationId={conversationId} />
-        <ChatMessages messages={messages} loggedInUser={loggedInUser} allUsers={allUsers} isTyping={isTyping} onUpdateReaction={onUpdateReaction} />
-        <SmartReplies lastMessage={lastMessageFromOtherUser || null} onSelectReply={handleSelectReply}/>
-        <ChatInput onSendMessage={onSendMessage} onTyping={onTyping} />
-      </div>
+    <div className="flex h-full flex-col bg-card w-full">
+      <ChatHeader user={user} onBack={onBack} isMobile={isMobile} onClearHistory={handleClearHistory} onStartCall={onStartCall} />
+      <ChatMessages messages={messages} loggedInUser={loggedInUser} allUsers={allUsers} isTyping={isTyping} onUpdateReaction={onUpdateReaction} />
+      <SmartReplies lastMessage={lastMessageFromOtherUser || null} onSelectReply={handleSelectReply}/>
+      <ChatInput onSendMessage={onSendMessage} onTyping={onTyping} />
     </div>
   );
 }

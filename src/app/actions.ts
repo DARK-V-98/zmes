@@ -57,27 +57,3 @@ export async function updateUserProfile(userId: string, formData: FormData) {
     return { success: false, message: error.message };
   }
 }
-
-export async function updateChatBackground(userId: string, conversationId: string, image: string) {
-  if (!userId) {
-    throw new Error('You must be logged in to update the chat background.');
-  }
-  
-  if (!image) {
-    throw new Error('No image provided.');
-  }
-
-  try {
-    const storageRef = ref(storage, `backgrounds/${conversationId}`);
-    await uploadString(storageRef, image, 'data_url');
-    const backgroundUrl = await getDownloadURL(storageRef);
-
-    const conversationRef = doc(db, 'conversations', conversationId);
-    await setDoc(conversationRef, { backgroundUrl }, { merge: true });
-
-    return { success: true, message: 'Chat background updated successfully.' };
-  } catch (error: any) {
-    console.error('Error updating chat background:', error);
-    return { success: false, message: error.message };
-  }
-}
