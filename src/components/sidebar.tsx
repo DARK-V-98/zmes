@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import type { Message, User } from '@/lib/data';
 import { cn } from '@/lib/utils';
@@ -425,7 +426,7 @@ export function Sidebar({ conversations, allUsers, messages, loggedInUser, selec
   );
 
   return (
-    <div className="w-full md:max-w-xs border-r flex flex-col">
+    <div className="w-full md:w-96 border-r flex flex-col">
       <div className="p-4 border-b flex justify-between items-center">
         <Image src="/zm.png" alt="Z Messenger Logo" width={100} height={25} className="rounded-lg" />
         <div className="flex items-center gap-1">

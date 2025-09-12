@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { Message, User } from '@/lib/data';
 import { Sidebar } from '@/components/sidebar';
 import { Chat } from '@/components/chat';
@@ -24,10 +24,12 @@ import {
   arrayUnion,
   arrayRemove,
   getDocs,
+  deleteDoc,
 } from 'firebase/firestore';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import { useAuth } from './auth-provider';
 import { CallView, type Call } from './call-view';
+import { createPeerConnection, hangUp, answerCall, startCall } from '@/lib/webrtc';
 
 interface ZMessengerProps {
   loggedInUser: User;
@@ -42,14 +44,17 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const isMobile = useMediaQuery('(max-width: 768px)');
-  const [view, setView] = useState<'sidebar' | 'chat'>('sidebar');
   const [isTyping, setIsTyping] = useState(false);
   const { user: authUser } = useAuth();
   const [loggedInUser, setLoggedInUser] = useState(initialUser);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeCall, setActiveCall] = useState<Call | null>(null);
   const [incomingCall, setIncomingCall] = useState<Call | null>(null);
+  const [callId, setCallId] = useState<string | null>(null);
 
+  const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
+  const localStreamRef = useRef<MediaStream | null>(null);
+  const remoteStreamRef = useRef<MediaStream | null>(null);
 
   // Keep loggedInUser state in sync with AuthProvider and other users' state
   useEffect(() => {
@@ -156,34 +161,24 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
         }
     });
 
-    return allUsers.filter(user => userIdsInConversations.has(user.id));
+    const conversationUsers = allUsers.filter(user => userIdsInConversations.has(user.id));
+    
+    // Sort conversations by the timestamp of the last message
+    return conversationUsers.sort((a, b) => {
+        const lastMessageA = messages.filter(m => (m.senderId === a.id || m.receiverId === a.id) && !m.deletedFor?.includes(loggedInUser.id)).pop()?.timestamp.getTime() || 0;
+        const lastMessageB = messages.filter(m => (m.senderId === b.id || m.receiverId === b.id) && !m.deletedFor?.includes(loggedInUser.id)).pop()?.timestamp.getTime() || 0;
+        return lastMessageB - lastMessageA;
+    });
+
   }, [messages, allUsers, loggedInUser.id]);
+
 
   // Set initial user on desktop
   useEffect(() => {
     if (!isMobile && !selectedUser && conversations.length > 0) {
-        const lastMessageTimestamps: {[key: string]: number} = {};
-        messages.forEach(msg => {
-            if (!msg.deletedFor?.includes(loggedInUser.id)) {
-              const timestamp = msg.timestamp.getTime();
-              const otherUserId = msg.senderId === loggedInUser.id ? msg.receiverId : msg.senderId;
-              if (!lastMessageTimestamps[otherUserId] || timestamp > lastMessageTimestamps[otherUserId]) {
-                  lastMessageTimestamps[otherUserId] = timestamp;
-              }
-            }
-        });
-
-        const sortedConversations = [...conversations].sort((a, b) => {
-            const lastMessageA = lastMessageTimestamps[a.id] || 0;
-            const lastMessageB = lastMessageTimestamps[b.id] || 0;
-            return lastMessageB - lastMessageA;
-        });
-
-        if (sortedConversations.length > 0) {
-          setSelectedUser(sortedConversations[0]);
-        }
+        setSelectedUser(conversations[0]);
     }
-  }, [conversations, isMobile, messages, loggedInUser.id, selectedUser]);
+  }, [conversations, isMobile, selectedUser]);
 
 
   // Mark messages as read
@@ -225,6 +220,43 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
     return () => unsubscribe();
   }, [selectedUser, loggedInUser.id]);
 
+
+  // Listen for incoming calls
+  useEffect(() => {
+    if (!loggedInUser.id) return;
+
+    const callsQuery = query(
+      collection(db, 'calls'),
+      where('calleeId', '==', loggedInUser.id)
+    );
+
+    const unsubscribe = onSnapshot(callsQuery, (snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === 'added') {
+          const callData = change.doc.data();
+          if (callData.offer) {
+            const caller = allUsers.find(u => u.id === callData.callerId);
+            if (caller) {
+              setIncomingCall({
+                caller: caller,
+                callee: loggedInUser,
+                status: 'ringing'
+              });
+              setCallId(change.doc.id);
+            }
+          }
+        } else if (change.type === 'removed') {
+           // If the call document is removed, it means the caller cancelled or the call ended.
+           if (change.doc.id === callId) {
+             setIncomingCall(null);
+             handleEndCall();
+           }
+        }
+      });
+    });
+
+    return () => unsubscribe();
+  }, [loggedInUser.id, allUsers, callId]);
 
   const handleSendMessage = async (content: string) => {
     if (!content.trim() || !selectedUser) return;
@@ -313,26 +345,18 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
   
   const handleSelectUser = (user: User) => {
     setSelectedUser(user);
-    if (isMobile) {
-      setView('chat');
-    }
-  }
-
-  const handleBackToSidebar = () => {
-    setView('sidebar');
-    setSelectedUser(null);
   }
 
   // Effect to manage view state on mobile
   useEffect(() => {
     if (isMobile) {
       if (selectedUser) {
-        setView('chat');
+        // setView('chat');
       } else {
-        setView('sidebar');
+        // setView('sidebar');
       }
     } else {
-      setView('chat'); // On desktop, we can always show chat view
+      // setView('chat'); // On desktop, we can always show chat view
     }
   }, [selectedUser, isMobile]);
 
@@ -343,72 +367,101 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
     ? messages.filter(m => m.conversationId === getConversationId(loggedInUser.id, selectedUser.id)) 
     : [];
   
-  // Call handling logic (dummies for now)
-  const handleStartCall = (user: User) => {
-    console.log(`Starting call with ${user.name}`);
-    const callData = { 
-      caller: loggedInUser, 
-      callee: user, 
-      status: 'ringing' as const
-    };
-    setActiveCall(callData);
-    // In a real app, you'd signal the other user here.
-    // For UI demo, we'll simulate an incoming call for the other side.
-  };
-
-  const handleAcceptCall = () => {
-    if (incomingCall) {
-      console.log('Accepting call');
-      setActiveCall({ ...incomingCall, status: 'active' });
-      setIncomingCall(null);
+  const handleStartCall = async (userToCall: User) => {
+    const newCallId = await startCall(loggedInUser, userToCall, (pc, local, remote) => {
+      peerConnectionRef.current = pc;
+      localStreamRef.current = local;
+      remoteStreamRef.current = remote;
+      const callData: Call = { 
+        caller: loggedInUser, 
+        callee: userToCall, 
+        status: 'ringing'
+      };
+      setActiveCall(callData);
+      
+      // Listen for connection state changes to transition to 'active'
+      pc.onconnectionstatechange = () => {
+        if (pc.connectionState === 'connected') {
+          setActiveCall({...callData, status: 'active'});
+        }
+      };
+    });
+    if (newCallId) {
+      setCallId(newCallId);
     }
   };
 
-  const handleDeclineCall = () => {
-    console.log('Declining call');
-    setIncomingCall(null);
-  };
-  
-  const handleEndCall = () => {
-    console.log('Ending call');
-    setActiveCall(null);
+  const handleAcceptCall = async () => {
+    if (incomingCall && callId) {
+      await answerCall(callId, (pc, local, remote) => {
+        peerConnectionRef.current = pc;
+        localStreamRef.current = local;
+        remoteStreamRef.current = remote;
+        setActiveCall({ ...incomingCall, status: 'active' });
+        setIncomingCall(null);
+      });
+    }
   };
 
+  const handleDeclineCall = async () => {
+    if (callId) {
+      await deleteDoc(doc(db, 'calls', callId));
+    }
+    setIncomingCall(null);
+    setCallId(null);
+  };
+  
+  const handleEndCall = async () => {
+    if (callId) {
+      await hangUp(callId, peerConnectionRef, localStreamRef, remoteStreamRef);
+    }
+    setActiveCall(null);
+    setIncomingCall(null);
+    setCallId(null);
+  };
+  
+  const viewToShow = isMobile && !selectedUser ? 'sidebar' : 'chat';
+  
   return (
     <div className="p-4 h-full relative">
-      <Card className="h-full flex rounded-2xl shadow-lg">
-        <Sidebar
-          conversations={conversations}
-          allUsers={otherUsers}
-          messages={messages}
-          loggedInUser={loggedInUser}
-          selectedUser={selectedUser}
-          onSelectUser={handleSelectUser}
-          onClearHistory={handleClearHistory}
-          searchTerm={searchTerm}
-          onSearchTermChange={setSearchTerm}
-        />
-        <div className="flex-1 flex flex-col">
-          {selectedUser ? (
-            <Chat
-              key={selectedUser.id}
-              user={selectedUser}
-              loggedInUser={loggedInUser}
-              messages={currentChatMessages}
-              onSendMessage={handleSendMessage}
-              onUpdateReaction={handleUpdateReaction}
-              onClearHistory={handleClearHistory}
-              isMobile={isMobile}
-              isTyping={isTyping}
-              onTyping={handleTyping}
-              onStartCall={handleStartCall}
-            />
-          ) : (
-            <div className="flex h-full items-center justify-center bg-card">
-              <p className="text-muted-foreground">Select a conversation or start a new one</p>
-            </div>
-          )}
-        </div>
+      <Card className="h-full flex rounded-2xl shadow-lg overflow-hidden">
+        { (viewToShow === 'sidebar' || !isMobile) &&
+          <Sidebar
+            conversations={conversations}
+            allUsers={otherUsers}
+            messages={messages}
+            loggedInUser={loggedInUser}
+            selectedUser={selectedUser}
+            onSelectUser={handleSelectUser}
+            onClearHistory={handleClearHistory}
+            searchTerm={searchTerm}
+            onSearchTermChange={setSearchTerm}
+          />
+        }
+        { (viewToShow === 'chat' || !isMobile) &&
+          <div className="flex-1 flex flex-col">
+            {selectedUser ? (
+              <Chat
+                key={selectedUser.id}
+                user={selectedUser}
+                loggedInUser={loggedInUser}
+                messages={currentChatMessages}
+                onSendMessage={handleSendMessage}
+                onUpdateReaction={handleUpdateReaction}
+                onClearHistory={handleClearHistory}
+                onBack={() => setSelectedUser(null)}
+                isMobile={isMobile}
+                isTyping={isTyping}
+                onTyping={handleTyping}
+                onStartCall={handleStartCall}
+              />
+            ) : (
+              <div className="hidden md:flex h-full items-center justify-center bg-card">
+                <p className="text-muted-foreground">Select a conversation or start a new one</p>
+              </div>
+            )}
+          </div>
+        }
       </Card>
       <CallView
         activeCall={activeCall}
