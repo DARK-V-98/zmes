@@ -7,12 +7,30 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Check, CheckCheck, MoreVertical, Paperclip, Send, SmilePlus, ArrowLeft, Download } from 'lucide-react';
+import { Check, CheckCheck, MoreVertical, Paperclip, Send, SmilePlus, ArrowLeft, Download, Trash2 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { generateSmartReplies } from '@/app/actions';
 import { Skeleton } from './ui/skeleton';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { usePWAInstall } from './pwa-install-provider';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+
 
 interface ChatProps {
   user: User;
@@ -20,14 +38,22 @@ interface ChatProps {
   messages: Message[];
   onSendMessage: (content: string) => void;
   onUpdateReaction: (messageId: string, emoji: string) => void;
+  onClearHistory: (userId: string) => void;
   onBack?: () => void;
   isMobile: boolean;
   isTyping: boolean;
   onTyping: (isTyping: boolean) => void;
 }
 
-const ChatHeader = ({ user, onBack, isMobile }: { user: User, onBack?: () => void, isMobile: boolean }) => {
+const ChatHeader = ({ user, onBack, isMobile, onClearHistory }: { user: User, onBack?: () => void, isMobile: boolean, onClearHistory: () => void }) => {
   const { canInstall, install } = usePWAInstall();
+  const [isAlertOpen, setIsAlertOpen] = useState(false);
+
+  const handleClearHistory = () => {
+    onClearHistory();
+    setIsAlertOpen(false);
+  }
+
   return (
     <div className="flex items-center p-4 border-b">
       {isMobile && (
@@ -58,9 +84,35 @@ const ChatHeader = ({ user, onBack, isMobile }: { user: User, onBack?: () => voi
           </Tooltip>
         </TooltipProvider>
       )}
-      <Button variant="ghost" size="icon">
-        <MoreVertical />
-      </Button>
+      <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon">
+              <MoreVertical />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+             <AlertDialogTrigger asChild>
+              <DropdownMenuItem className="cursor-pointer">
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  <span>Clear History</span>
+              </DropdownMenuItem>
+            </AlertDialogTrigger>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will clear the chat history for you only. The other person will still see the messages. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleClearHistory}>Continue</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
@@ -152,16 +204,23 @@ const ChatMessages = ({ messages, loggedInUser, allUsers, isTyping, onUpdateReac
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: 'auto' });
   }, [messages, isTyping]);
+  
+  const visibleMessages = messages.filter(m => !m.deletedFor?.includes(loggedInUser.id));
 
   return (
     <ScrollArea className="flex-1 p-4">
       <div className="space-y-4">
-        {messages.map((message) => {
+        {visibleMessages.length > 0 ? visibleMessages.map((message) => {
           const isSender = message.senderId === loggedInUser.id;
           const sender = isSender ? loggedInUser : usersMap.get(message.senderId)
           if (!sender) return null;
           return <ChatMessage key={message.id} message={message} isSender={isSender} sender={sender} onUpdateReaction={onUpdateReaction}/>;
-        })}
+        }) : (
+          <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+            <p>No messages yet.</p>
+            <p className="text-sm">Start the conversation!</p>
+          </div>
+        )}
         {isTyping && <TypingIndicator />}
       </div>
       <div ref={scrollRef} />
@@ -274,9 +333,11 @@ const ChatInput = ({ onSendMessage, onTyping }: { onSendMessage: (content: strin
   );
 };
 
-export function Chat({ user, loggedInUser, messages, onSendMessage, onUpdateReaction, onBack, isMobile, isTyping, onTyping }: ChatProps) {
+export function Chat({ user, loggedInUser, messages, onSendMessage, onUpdateReaction, onClearHistory, onBack, isMobile, isTyping, onTyping }: ChatProps) {
   const allUsers = [loggedInUser, user];
-  const lastMessageFromOtherUser = messages
+  
+  const visibleMessages = messages.filter(m => !m.deletedFor?.includes(loggedInUser.id));
+  const lastMessageFromOtherUser = visibleMessages
     .slice()
     .reverse()
     .find(m => m.senderId === user.id);
@@ -285,9 +346,13 @@ export function Chat({ user, loggedInUser, messages, onSendMessage, onUpdateReac
     onSendMessage(reply);
   };
 
+  const handleClearHistory = () => {
+    onClearHistory(user.id);
+  }
+
   return (
     <div className="flex h-full flex-col bg-card w-full">
-      <ChatHeader user={user} onBack={onBack} isMobile={isMobile} />
+      <ChatHeader user={user} onBack={onBack} isMobile={isMobile} onClearHistory={handleClearHistory} />
       <ChatMessages messages={messages} loggedInUser={loggedInUser} allUsers={allUsers} isTyping={isTyping} onUpdateReaction={onUpdateReaction} />
       <SmartReplies lastMessage={lastMessageFromOtherUser || null} onSelectReply={handleSelectReply}/>
       <ChatInput onSendMessage={onSendMessage} onTyping={onTyping} />

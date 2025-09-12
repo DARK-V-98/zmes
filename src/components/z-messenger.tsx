@@ -22,6 +22,7 @@ import {
   getDoc,
   arrayUnion,
   arrayRemove,
+  getDocs,
 } from 'firebase/firestore';
 import { useMediaQuery } from '@/hooks/use-media-query';
 
@@ -66,10 +67,10 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
   }, [loggedInUser.id]);
 
 
-  // Fetch all users for starting new conversations
+  // Fetch all users and initial data
   useEffect(() => {
     const usersQuery = query(collection(db, 'users'));
-    const unsubscribe = onSnapshot(usersQuery, (querySnapshot) => {
+    const unsubscribeUsers = onSnapshot(usersQuery, (querySnapshot) => {
       const usersData: User[] = [];
       querySnapshot.forEach((doc) => {
         const data = doc.data();
@@ -82,7 +83,6 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
       });
       setAllUsers(usersData);
       
-      // Update selected user with fresh data
       if (selectedUser) {
         const updatedSelectedUser = usersData.find(u => u.id === selectedUser.id);
         if (updatedSelectedUser) {
@@ -90,11 +90,7 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
         }
       }
     });
-    return () => unsubscribe();
-  }, [selectedUser]);
-  
-  // Fetch messages for all conversations
-  useEffect(() => {
+
     if (!loggedInUser.id) return;
 
     const messagesQuery = query(
@@ -103,7 +99,7 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
       orderBy('timestamp', 'asc')
     );
     
-    const unsubscribe = onSnapshot(messagesQuery, (snapshot) => {
+    const unsubscribeMessages = onSnapshot(messagesQuery, (snapshot) => {
       const batch = writeBatch(db);
       let hasUnread = false;
 
@@ -114,9 +110,9 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
           ...data,
           timestamp: (data.timestamp as Timestamp)?.toDate() ?? new Date(),
           reactions: data.reactions || [],
+          deletedFor: data.deletedFor || [],
         } as Message;
         
-        // Mark message as read
         if (selectedUser && data.receiverId === loggedInUser.id && data.senderId === selectedUser.id && !data.read) {
           batch.update(doc.ref, { read: true });
           hasUnread = true;
@@ -136,34 +132,40 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
         userIds.add(otherUserId);
       });
 
-      const conversationUsers = allUsers.filter(user => userIds.has(user.id));
-      setConversations(conversationUsers);
-      
-      if (!isMobile && !selectedUser && conversationUsers.length > 0) {
-            const lastMessageTimestamps: {[key: string]: number} = {};
-            allMessages.forEach(msg => {
-                const timestamp = msg.timestamp.getTime();
-                const otherUserId = msg.senderId === loggedInUser.id ? msg.receiverId : msg.senderId;
-                if (!lastMessageTimestamps[otherUserId] || timestamp > lastMessageTimestamps[otherUserId]) {
-                    lastMessageTimestamps[otherUserId] = timestamp;
-                }
-            });
+      setAllUsers(currentAllUsers => {
+          const conversationUsers = currentAllUsers.filter(user => userIds.has(user.id));
+          setConversations(conversationUsers);
 
-            const sortedConversations = [...conversationUsers].sort((a, b) => {
-                const lastMessageA = lastMessageTimestamps[a.id] || 0;
-                const lastMessageB = lastMessageTimestamps[b.id] || 0;
-                return lastMessageB - lastMessageA;
-            });
+          if (!isMobile && !selectedUser && conversationUsers.length > 0) {
+              const lastMessageTimestamps: {[key: string]: number} = {};
+              allMessages.forEach(msg => {
+                  const timestamp = msg.timestamp.getTime();
+                  const otherUserId = msg.senderId === loggedInUser.id ? msg.receiverId : msg.senderId;
+                  if (!lastMessageTimestamps[otherUserId] || timestamp > lastMessageTimestamps[otherUserId]) {
+                      lastMessageTimestamps[otherUserId] = timestamp;
+                  }
+              });
 
-            if (sortedConversations.length > 0) {
-              setSelectedUser(sortedConversations[0]);
-            }
-        }
+              const sortedConversations = [...conversationUsers].sort((a, b) => {
+                  const lastMessageA = lastMessageTimestamps[a.id] || 0;
+                  const lastMessageB = lastMessageTimestamps[b.id] || 0;
+                  return lastMessageB - lastMessageA;
+              });
+
+              if (sortedConversations.length > 0) {
+                setSelectedUser(sortedConversations[0]);
+              }
+          }
+          return currentAllUsers;
+      });
     });
 
 
-    return () => unsubscribe();
-  }, [loggedInUser.id, allUsers, isMobile, selectedUser]);
+    return () => {
+      unsubscribeUsers();
+      unsubscribeMessages();
+    };
+  }, [loggedInUser.id, isMobile, selectedUser]);
 
 
   // Typing status management
@@ -198,6 +200,7 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
       timestamp: serverTimestamp(),
       read: false,
       reactions: [],
+      deletedFor: [],
     });
   };
 
@@ -212,24 +215,37 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
     const myReactionIndex = existingReactions.findIndex(r => r.userId === loggedInUser.id);
 
     if (myReactionIndex > -1) {
-      // If I've already reacted
       if (existingReactions[myReactionIndex].emoji === emoji) {
-        // and it's the same emoji, remove my reaction
         await updateDoc(messageRef, {
           reactions: arrayRemove(existingReactions[myReactionIndex])
         });
       } else {
-        // if it's a different emoji, update my reaction
         const updatedReactions = [...existingReactions];
         updatedReactions[myReactionIndex].emoji = emoji;
         await updateDoc(messageRef, { reactions: updatedReactions });
       }
     } else {
-      // If I haven't reacted yet, add my reaction
       await updateDoc(messageRef, {
         reactions: arrayUnion({ emoji, userId: loggedInUser.id })
       });
     }
+  };
+
+  const handleClearHistory = async (otherUserId: string) => {
+    const conversationId = getConversationId(loggedInUser.id, otherUserId);
+    const messagesQuery = query(
+      collection(db, 'messages'),
+      where('conversationId', '==', conversationId)
+    );
+
+    const querySnapshot = await getDocs(messagesQuery);
+    const batch = writeBatch(db);
+    querySnapshot.forEach(doc => {
+      batch.update(doc.ref, {
+        deletedFor: arrayUnion(loggedInUser.id)
+      });
+    });
+    await batch.commit();
   };
 
   const handleTyping = async (isTyping: boolean) => {
@@ -264,9 +280,13 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
       setView('chat');
     } else {
       setView('sidebar');
-      setSelectedUser(null);
+      if (conversations.length > 0 && !selectedUser) {
+        // do nothing, let the user select a conversation
+      } else if (conversations.length === 0) {
+        setSelectedUser(null);
+      }
     }
-  }, [isMobile]);
+  }, [isMobile, conversations, selectedUser]);
 
   useEffect(() => {
     if (isMobile && selectedUser) {
@@ -279,10 +299,7 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
   const otherUsers = allUsers.filter(u => u.id !== loggedInUser.id);
   
   const currentChatMessages = selectedUser 
-    ? messages.filter(m => 
-        (m.senderId === loggedInUser.id && m.receiverId === selectedUser.id) || 
-        (m.senderId === selectedUser.id && m.receiverId === loggedInUser.id)
-      ) 
+    ? messages.filter(m => m.conversationId === getConversationId(loggedInUser.id, selectedUser.id)) 
     : [];
 
   if (isMobile) {
@@ -306,13 +323,13 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
                messages={currentChatMessages}
                onSendMessage={handleSendMessage}
                onUpdateReaction={handleUpdateReaction}
+               onClearHistory={handleClearHistory}
                onBack={handleBackToSidebar}
                isMobile={isMobile}
                isTyping={isTyping}
                onTyping={handleTyping}
              />
            ) : (
-            // Fallback for mobile when no user is selected but view is 'chat'
             <Sidebar
                 users={conversations}
                 allUsers={otherUsers}
@@ -347,6 +364,7 @@ export function ZMessenger({ loggedInUser }: ZMessengerProps) {
               messages={currentChatMessages}
               onSendMessage={handleSendMessage}
               onUpdateReaction={handleUpdateReaction}
+              onClearHistory={handleClearHistory}
               isMobile={isMobile}
               isTyping={isTyping}
               onTyping={handleTyping}

@@ -14,4 +14,6 @@ export type Message = {
   timestamp: Date;
   read: boolean;
   reactions: { emoji: string; userId: string }[];
+  deletedFor?: string[];
+  participants?: string[];
 };
