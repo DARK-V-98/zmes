@@ -230,18 +230,20 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
     const myReaction = existingReactions.find(r => r.userId === loggedInUser.id);
   
     if (myReaction) {
-      // If the user is clicking the same emoji again, remove their reaction.
       if (myReaction.emoji === emoji) {
+        // If the user is clicking the same emoji again, remove their reaction.
         await updateDoc(messageRef, {
           reactions: arrayRemove(myReaction),
         });
       } else {
-        // If the user is changing their reaction, remove the old one and add the new one.
-        // This is done in a batch to be atomic, though not strictly necessary here.
-        const batch = writeBatch(db);
-        batch.update(messageRef, { reactions: arrayRemove(myReaction) });
-        batch.update(messageRef, { reactions: arrayUnion({ emoji, userId: loggedInUser.id }) });
-        await batch.commit();
+        // If the user is changing their reaction, first remove the old one...
+        await updateDoc(messageRef, {
+          reactions: arrayRemove(myReaction),
+        });
+        // ...then add the new one.
+        await updateDoc(messageRef, {
+          reactions: arrayUnion({ emoji, userId: loggedInUser.id }),
+        });
       }
     } else {
       // If the user has not reacted yet, add the new reaction.
