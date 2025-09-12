@@ -21,7 +21,14 @@ export default function Home() {
     return (
       <main className="h-screen bg-background text-foreground flex items-center justify-center">
         <div className="animate-pulse">
-          <Image src="/zm.png" alt="Z Messenger Logo" width={120} height={30} className="rounded-lg" />
+          <Image
+            src="/zm.png"
+            alt="Z Messenger Logo"
+            width={120}
+            height={30}
+            className="rounded-lg h-auto"
+            priority
+          />
         </div>
       </main>
     );

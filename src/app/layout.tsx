@@ -1,4 +1,4 @@
-import type {Metadata} from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { AuthProvider } from '@/components/auth-provider';
@@ -8,12 +8,18 @@ import { MoodProvider } from '@/components/mood-provider';
 export const metadata: Metadata = {
   title: 'Z Messenger',
   description: 'A modern messaging app with AI-powered features.',
-  viewport: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no',
   manifest: '/manifest.json',
-  themeColor: '#ffffff',
   icons: {
     apple: '/icon-192x192.png',
   },
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: '#ffffff',
 };
 
 export default function RootLayout({
