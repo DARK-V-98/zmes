@@ -23,10 +23,17 @@ export async function updateUserProfile(userId: string, formData: FormData) {
 
     if (image) {
       const storageRef = ref(storage, `avatars/${userId}`);
-      const base64Data = image.split(',')[1];
-      await uploadString(storageRef, base64Data, 'base64', {
-        contentType: image.match(/data:(.*);/)?.[1] || 'image/png'
-      });
+      
+      // Correctly parse the data URI to get the content type and base64 data
+      const match = image.match(/^data:(.+);base64,(.+)$/);
+      if (!match) {
+        throw new Error('Invalid image data URI');
+      }
+      
+      const contentType = match[1];
+      const base64Data = match[2];
+
+      await uploadString(storageRef, base64Data, 'base64', { contentType });
       newPhotoURL = await getDownloadURL(storageRef);
       updates.photoURL = newPhotoURL;
     }
