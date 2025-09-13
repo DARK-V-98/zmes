@@ -59,13 +59,15 @@ export function ZMessenger() {
   const [localStreamState, setLocalStreamState] = useState<MediaStream | null>(null);
   const [remoteStreamState, setRemoteStreamState] = useState<MediaStream | null>(null);
 
-  // Derive loggedInUser from authUser
+  // Derive loggedInUser from authUser and allUsers list
    useEffect(() => {
     if (authUser) {
+      // Prefer the real-time user object from Firestore if available
       const userFromList = allUsers.find(u => u.id === authUser.uid);
       if (userFromList) {
         setLoggedInUser(userFromList);
       } else {
+        // Fallback to authUser details if not yet in the list
         setLoggedInUser({
           id: authUser.uid,
           name: authUser.displayName || 'You',

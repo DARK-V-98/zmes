@@ -1,3 +1,4 @@
+
 'use server';
 import { auth, db, storage } from '@/lib/firebase';
 import { updateProfile } from 'firebase/auth';
@@ -14,30 +15,29 @@ export async function updateUserProfile(userId: string, formData: FormData) {
   }
 
   try {
-    let photoURL: string | null = null;
-
-    if (image) {
-      const storageRef = ref(storage, `avatars/${userId}`);
-      await uploadString(storageRef, image, 'data_url');
-      photoURL = await getDownloadURL(storageRef);
-    }
-    
-    // There's no server-side equivalent to update the auth profile with the client SDK
-    // This part of the logic can only be successfully run on the client.
-    // For a server action, we can only update the Firestore document.
-    
     const userDocRef = doc(db, 'users', userId);
     const updates: { displayName: string; photoURL?: string } = {
       displayName: name,
     };
-    if (photoURL) {
+
+    if (image) {
+      const storageRef = ref(storage, `avatars/${userId}`);
+      // The image is a data URL, so we need to extract the base64 part
+      const base64Data = image.split(',')[1];
+      await uploadString(storageRef, base64Data, 'base64', {
+          contentType: image.match(/data:(.*);/)?.[1] || 'image/png'
+      });
+      const photoURL = await getDownloadURL(storageRef);
       updates.photoURL = photoURL;
     }
+    
+    // Note: The client SDK's `updateProfile` for auth can't be used in a server action.
+    // This action can only update Firestore. The client will need to handle updating
+    // its local auth state if immediate reflection in `auth.currentUser` is needed,
+    // but Firestore's real-time updates should handle the UI changes.
+    // A more robust solution for auth updates is using the Firebase Admin SDK in a secure backend.
+    
     await updateDoc(userDocRef, updates);
-
-    // Note: To update auth.currentUser, this should be done client-side
-    // or by using the Firebase Admin SDK for server-side operations.
-    // The UI will reflect the change from Firestore's real-time updates.
 
     return { success: true, message: 'Profile updated successfully.' };
 
