@@ -45,6 +45,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useTheme, type Theme } from './theme-provider';
 import { Logo } from './logo';
+import { updateProfile } from 'firebase/auth';
 
 interface SidebarProps {
   conversations: User[];
@@ -104,7 +105,8 @@ const ProfileSettingsDialog = ({ user, open, setOpen }: { user: User; open: bool
       });
       return;
     }
-    if (!user.id) {
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
        toast({
         variant: 'destructive',
         title: 'Error',
@@ -121,9 +123,16 @@ const ProfileSettingsDialog = ({ user, open, setOpen }: { user: User; open: bool
       formData.append('image', imageData);
     }
 
-    const result = await updateUserProfile(user.id, formData);
+    const result = await updateUserProfile(currentUser.uid, formData);
 
     if (result.success) {
+      // Client-side update of the auth profile
+      const authUpdates: { displayName?: string; photoURL?: string; } = { displayName: name };
+      if (result.photoURL) {
+          authUpdates.photoURL = result.photoURL;
+      }
+      await updateProfile(currentUser, authUpdates);
+      
       toast({
         title: 'Success',
         description: result.message,
@@ -281,7 +290,7 @@ const UserMenu = ({ user }: { user: User }) => {
     );
 };
 
-const NewChatDialog = ({ loggedInUser, onSelectUser }: { loggedInUser: User, onSelectUser: (user: User) => void }) => {
+const NewChatDialog = ({ loggedInUser, onSelectUser, usersForNewChat }: { loggedInUser: User, onSelectUser: (user: User) => void, usersForNewChat: User[] }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [searchResults, setSearchResults] = useState<User[]>([]);
@@ -293,7 +302,9 @@ const NewChatDialog = ({ loggedInUser, onSelectUser }: { loggedInUser: User, onS
     setLoading(true);
     setSearched(true);
     const results = await searchUsers(search, loggedInUser.id);
-    setSearchResults(results);
+    // Filter out users already in conversation
+    const finalResults = results.filter(u => !usersForNewChat.some(existing => existing.id === u.id));
+    setSearchResults(finalResults);
     setLoading(false);
   };
 
@@ -494,6 +505,8 @@ export function Sidebar({ conversations, loggedInUser, selectedUser, onSelectUse
   const filteredConversations = searchTerm ? conversationDetails.filter(({ user }) => 
     user.name.toLowerCase().includes(searchTerm.toLowerCase())
   ) : conversationDetails;
+  
+  const usersForNewChat = allUsers ? allUsers.filter(u => u.id !== loggedInUser.id && !conversations.some(c => c.id === u.id)) : [];
 
   return (
     <div className="w-full md:w-1/3 md:max-w-sm lg:w-1/4 lg:max-w-md border-r flex flex-col">
@@ -515,7 +528,7 @@ export function Sidebar({ conversations, loggedInUser, selectedUser, onSelectUse
               </Tooltip>
             </TooltipProvider>
           )}
-           <NewChatDialog loggedInUser={loggedInUser} onSelectUser={handleSelectNewUser} />
+           <NewChatDialog loggedInUser={loggedInUser} onSelectUser={handleSelectNewUser} usersForNewChat={usersForNewChat} />
         </div>
       </div>
        <div className="p-2 sm:p-4 border-b">

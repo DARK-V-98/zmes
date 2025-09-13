@@ -1,7 +1,6 @@
 
 'use server';
 import { auth, db, storage } from '@/lib/firebase';
-import { updateProfile } from 'firebase/auth';
 import { doc, updateDoc, setDoc, collection, query, where, getDocs, or } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadString } from 'firebase/storage';
 import type { User } from '@/lib/data';
@@ -20,26 +19,23 @@ export async function updateUserProfile(userId: string, formData: FormData) {
       displayName: name,
     };
 
+    let newPhotoURL: string | undefined = undefined;
+
     if (image) {
       const storageRef = ref(storage, `avatars/${userId}`);
-      // The image is a data URL, so we need to extract the base64 part
       const base64Data = image.split(',')[1];
       await uploadString(storageRef, base64Data, 'base64', {
-          contentType: image.match(/data:(.*);/)?.[1] || 'image/png'
+        contentType: image.match(/data:(.*);/)?.[1] || 'image/png'
       });
-      const photoURL = await getDownloadURL(storageRef);
-      updates.photoURL = photoURL;
+      newPhotoURL = await getDownloadURL(storageRef);
+      updates.photoURL = newPhotoURL;
     }
     
-    // Note: The client SDK's `updateProfile` for auth can't be used in a server action.
-    // This action can only update Firestore. The client will need to handle updating
-    // its local auth state if immediate reflection in `auth.currentUser` is needed,
-    // but Firestore's real-time updates should handle the UI changes.
-    // A more robust solution for auth updates is using the Firebase Admin SDK in a secure backend.
-    
+    // Update Firestore document
     await updateDoc(userDocRef, updates);
 
-    return { success: true, message: 'Profile updated successfully.' };
+    // The server action returns the new data, the client will update the auth profile.
+    return { success: true, message: 'Profile updated successfully.', photoURL: newPhotoURL };
 
   } catch (error: any) {
     console.error('Error updating profile:', error);
