@@ -261,6 +261,7 @@ export function ZMessenger() {
               setIncomingCall({
                 caller: caller,
                 callee: loggedInUser,
+                type: callData.type,
                 status: 'ringing'
               });
               setCallId(change.doc.id);
@@ -310,16 +311,14 @@ export function ZMessenger() {
             const fileDataUri = reader.result as string;
             const conversationId = getConversationId(loggedInUser.id, selectedUser.id);
             
-            // Client-side upload logic
             const match = fileDataUri.match(/^data:(.+);base64,(.+)$/);
             if (!match) {
                 throw new Error('Invalid file data URI');
             }
             const contentType = match[1];
-            const base64Data = match[2];
-
-            const fileRef = ref(storage, `chat_media/${conversationId}/${file.name}`);
-            await uploadString(fileRef, base64Data, 'base64', { contentType });
+            
+            const fileRef = ref(storage, `chat_media/${conversationId}/${Date.now()}_${file.name}`);
+            await uploadString(fileRef, fileDataUri, 'data_url', { contentType });
             const downloadURL = await getDownloadURL(fileRef);
 
             await addDoc(collection(db, 'messages'), {
@@ -335,6 +334,10 @@ export function ZMessenger() {
                 read: false,
                 reactions: [],
                 deletedFor: [],
+            });
+             toast({
+                title: 'Success!',
+                description: 'File uploaded successfully.',
             });
         };
     } catch (error) {
@@ -430,9 +433,9 @@ export function ZMessenger() {
     return messages.filter(m => m.conversationId === getConversationId(loggedInUser.id, selectedUser.id));
   }, [selectedUser, messages, loggedInUser]);
   
-  const handleStartCall = async (userToCall: User) => {
+  const handleStartCall = async (userToCall: User, type: 'audio' | 'video') => {
     if (!loggedInUser) return;
-    const newCallId = await startCall(loggedInUser, userToCall, (pc, local, remote) => {
+    const newCallId = await startCall(loggedInUser, userToCall, type, (pc, local, remote) => {
       peerConnectionRef.current = pc;
       localStreamRef.current = local;
       remoteStreamRef.current = remote;
@@ -441,7 +444,8 @@ export function ZMessenger() {
       
       const callData: Call = { 
         caller: loggedInUser, 
-        callee: userToCall, 
+        callee: userToCall,
+        type,
         status: 'ringing'
       };
       setActiveCall(callData);

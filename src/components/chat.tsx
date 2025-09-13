@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Check, CheckCheck, MoreVertical, Paperclip, Send, SmilePlus, ArrowLeft, Trash2, Phone, Edit, X, Smile, File, Download } from 'lucide-react';
+import { Check, CheckCheck, MoreVertical, Paperclip, Send, SmilePlus, ArrowLeft, Trash2, Phone, Edit, X, Smile, File, Download, Video } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import {
@@ -85,7 +85,7 @@ const MoodChanger = ({ onSetMood }: { onSetMood: (mood: Mood) => void }) => {
 };
 
 
-export const ChatHeader = ({ user, onBack, isMobile, onClearHistory, onStartCall, onSetMood, mood }: { user: User, onBack?: () => void, isMobile: boolean, onClearHistory: () => void, onStartCall: (user: User) => void, onSetMood: (mood: Mood) => void, mood: Mood }) => {
+export const ChatHeader = ({ user, onBack, isMobile, onClearHistory, onStartCall, onSetMood, mood }: { user: User, onBack?: () => void, isMobile: boolean, onClearHistory: () => void, onStartCall: (user: User, type: 'audio' | 'video') => void, onSetMood: (mood: Mood) => void, mood: Mood }) => {
   const [isAlertOpen, setIsAlertOpen] = useState(false);
 
   const handleClearHistory = () => {
@@ -115,11 +115,21 @@ export const ChatHeader = ({ user, onBack, isMobile, onClearHistory, onStartCall
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onStartCall(user)}>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onStartCall(user, 'audio')}>
               <Phone />
             </Button>
           </TooltipTrigger>
           <TooltipContent>Start audio call</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onStartCall(user, 'video')}>
+              <Video />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Start video call</TooltipContent>
         </Tooltip>
       </TooltipProvider>
       <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>

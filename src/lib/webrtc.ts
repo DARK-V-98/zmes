@@ -44,10 +44,15 @@ export const createPeerConnection = (
 export const startCall = async (
     caller: User,
     callee: User,
+    type: 'audio' | 'video',
     onPeerConnection: PeerConnectionCallback
 ): Promise<string | null> => {
     try {
-        const localStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
+        const mediaConstraints = type === 'video' 
+            ? { video: true, audio: true } 
+            : { video: false, audio: true };
+            
+        const localStream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
         const remoteStream = new MediaStream();
 
         const pc = createPeerConnection((stream) => {
@@ -76,7 +81,7 @@ export const startCall = async (
             type: offerDescription.type,
         };
 
-        await setDoc(callDocRef, { offer, callerId: caller.id, calleeId: callee.id });
+        await setDoc(callDocRef, { offer, callerId: caller.id, calleeId: callee.id, type });
 
         onSnapshot(callDocRef, (snapshot) => {
             const data = snapshot.data();
@@ -108,7 +113,17 @@ export const answerCall = async (
   onPeerConnection: PeerConnectionCallback
 ) => {
   try {
-    const localStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
+    const callDocRef = doc(db, 'calls', callId);
+    const callDocSnapshot = await getDoc(callDocRef);
+    const callData = callDocSnapshot.data();
+    
+    if (!callData) throw new Error("Call not found");
+    
+    const mediaConstraints = callData.type === 'video'
+        ? { video: true, audio: true }
+        : { video: false, audio: true };
+
+    const localStream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
     const remoteStream = new MediaStream();
     
     const pc = createPeerConnection((stream) => {
@@ -121,16 +136,12 @@ export const answerCall = async (
     
     onPeerConnection(pc, localStream, remoteStream);
 
-    const callDocRef = doc(db, 'calls', callId);
     const offerCandidates = collection(callDocRef, 'offerCandidates');
     const answerCandidates = collection(callDocRef, 'answerCandidates');
 
     pc.onicecandidate = (event) => {
       event.candidate && addDoc(answerCandidates, event.candidate.toJSON());
     };
-
-    const callDocSnapshot = await getDoc(callDocRef);
-    const callData = callDocSnapshot.data();
     
     if (callData?.offer) {
         await pc.setRemoteDescription(new RTCSessionDescription(callData.offer));
