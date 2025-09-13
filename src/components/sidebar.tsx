@@ -281,7 +281,7 @@ const UserMenu = ({ user }: { user: User }) => {
     );
 };
 
-const NewChatDialog = ({ loggedInUser, onSelectUser, users }: { loggedInUser: User, onSelectUser: (user: User) => void, users: User[] }) => {
+const NewChatDialog = ({ loggedInUser, onSelectUser }: { loggedInUser: User, onSelectUser: (user: User) => void }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [searchResults, setSearchResults] = useState<User[]>([]);
@@ -300,19 +300,16 @@ const NewChatDialog = ({ loggedInUser, onSelectUser, users }: { loggedInUser: Us
   const handleSelect = (user: User) => {
     onSelectUser(user);
     setIsOpen(false);
-    setSearch('');
-    setSearchResults([]);
-    setSearched(false);
   }
   
   const resetState = (open: boolean) => {
+    setIsOpen(open);
     if (!open) {
       setSearch('');
       setSearchResults([]);
       setSearched(false);
       setLoading(false);
     }
-    setIsOpen(open);
   }
 
   return (
@@ -491,15 +488,12 @@ export function Sidebar({ conversations, loggedInUser, selectedUser, onSelectUse
   }).sort((a,b) => b.lastMessageTimestamp.getTime() - a.lastMessageTimestamp.getTime());
   
   const handleSelectNewUser = (user: User) => {
-    setSearchTerm('');
     onSelectUser(user);
   };
   
   const filteredConversations = searchTerm ? conversationDetails.filter(({ user }) => 
     user.name.toLowerCase().includes(searchTerm.toLowerCase())
   ) : conversationDetails;
-
-  const usersForNewChat = Array.isArray(allUsers) ? allUsers.filter(u => u.id !== loggedInUser.id && !conversations.some(c => c.id === u.id)) : [];
 
   return (
     <div className="w-full md:w-1/3 md:max-w-sm lg:w-1/4 lg:max-w-md border-r flex flex-col">
@@ -521,7 +515,7 @@ export function Sidebar({ conversations, loggedInUser, selectedUser, onSelectUse
               </Tooltip>
             </TooltipProvider>
           )}
-           <NewChatDialog loggedInUser={loggedInUser} onSelectUser={handleSelectNewUser} users={usersForNewChat} />
+           <NewChatDialog loggedInUser={loggedInUser} onSelectUser={handleSelectNewUser} />
         </div>
       </div>
        <div className="p-2 sm:p-4 border-b">
