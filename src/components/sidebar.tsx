@@ -53,8 +53,6 @@ interface SidebarProps {
   selectedUser: User | null;
   onSelectUser: (user: User) => void;
   onClearHistory: (userId: string) => void;
-  searchTerm: string;
-  onSearchTermChange: (term: string) => void;
 }
 
 const IOSInstallInstructions = ({ open, onOpenChange }: { open: boolean, onOpenChange: (open: boolean) => void }) => (
@@ -338,9 +336,9 @@ const NewChatDialog = ({ users, onSelectUser }: { users: User[], onSelectUser: (
                   <Button size="sm" onClick={() => handleSelect(user)}>Chat</Button>
                 </div>
               ))
-            ) : search && (
+            ) : search ? (
               <p className="text-center text-sm text-muted-foreground py-4">No users found.</p>
-            )}
+            ) : null}
           </div>
         </ScrollArea>
       </DialogContent>
@@ -373,67 +371,66 @@ const ConversationItem = ({
   };
 
   return (
-    <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
-      <ContextMenu>
-        <ContextMenuTrigger>
-          <Button
-            variant="ghost"
-            className={cn(
-              'w-full h-auto justify-start items-center p-3 text-left rounded-lg transition-colors',
-              selectedUser?.id === user.id && 'bg-secondary'
+    <ContextMenu>
+      <ContextMenuTrigger>
+        <Button
+          variant="ghost"
+          className={cn(
+            'w-full h-auto justify-start items-center p-3 text-left rounded-lg transition-colors',
+            selectedUser?.id === user.id && 'bg-secondary'
+          )}
+          onClick={() => onSelectUser(user)}
+        >
+          <Avatar className="h-10 w-10 sm:h-12 sm:w-12 mr-4 relative">
+            <AvatarImage src={user.avatar} alt={user.name} data-ai-hint="profile picture" />
+            <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+            {user.isOnline && (
+              <div className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-accent ring-2 ring-background"></div>
             )}
-            onClick={() => onSelectUser(user)}
-          >
-            <Avatar className="h-10 w-10 sm:h-12 sm:w-12 mr-4 relative">
-              <AvatarImage src={user.avatar} alt={user.name} data-ai-hint="profile picture" />
-              <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-              {user.isOnline && (
-                <div className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-accent ring-2 ring-background"></div>
-              )}
-            </Avatar>
-            <div className="flex-1 overflow-hidden">
-              <p className="font-semibold truncate">{user.name}</p>
-              {lastMessage && (
-                <p className="text-sm text-muted-foreground truncate">{lastMessage}</p>
-              )}
-            </div>
-            {unreadCount !== undefined && unreadCount > 0 && (
-              <Badge className="bg-primary text-primary-foreground ml-2">{unreadCount}</Badge>
+          </Avatar>
+          <div className="flex-1 overflow-hidden">
+            <p className="font-semibold truncate">{user.name}</p>
+            {lastMessage && (
+              <p className="text-sm text-muted-foreground truncate">{lastMessage}</p>
             )}
-          </Button>
-        </ContextMenuTrigger>
-        {onClearHistory && (
-          <ContextMenuContent>
-            <ContextMenuItem onClick={() => onSelectUser(user)}>Open Chat</ContextMenuItem>
-            <AlertDialogTrigger asChild>
-              <ContextMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
-                <Trash2 className="mr-2 h-4 w-4" /> Delete Chat
-              </ContextMenuItem>
-            </AlertDialogTrigger>
-          </ContextMenuContent>
-        )}
-      </ContextMenu>
+          </div>
+          {unreadCount !== undefined && unreadCount > 0 && (
+            <Badge className="bg-primary text-primary-foreground ml-2">{unreadCount}</Badge>
+          )}
+        </Button>
+      </ContextMenuTrigger>
       {onClearHistory && (
-       <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-          <AlertDialogDescription>
-            This will delete the chat history for you only. The other person will still see the messages. This action cannot be undone.
-          </DialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={handleDeleteChat}>Continue</AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
+         <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
+            <ContextMenuContent>
+                <ContextMenuItem onClick={() => onSelectUser(user)}>Open Chat</ContextMenuItem>
+                 <AlertDialogTrigger asChild>
+                    <ContextMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
+                        <Trash2 className="mr-2 h-4 w-4" /> Delete Chat
+                    </ContextMenuItem>
+                </AlertDialogTrigger>
+            </ContextMenuContent>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                    This will delete the chat history for you only. The other person will still see the messages. This action cannot be undone.
+                </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteChat}>Continue</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
       )}
-    </AlertDialog>
+    </ContextMenu>
   );
 };
 
 
-export function Sidebar({ conversations, allUsers, messages, loggedInUser, selectedUser, onSelectUser, onClearHistory, searchTerm, onSearchTermChange }: SidebarProps) {
+export function Sidebar({ conversations, allUsers, messages, loggedInUser, selectedUser, onSelectUser, onClearHistory }: SidebarProps) {
   const otherUsers = allUsers.filter(u => u.id !== loggedInUser.id);
+  const [searchTerm, setSearchTerm] = useState('');
   const { canInstall, install } = usePWAInstall();
   const [isInstallSheetOpen, setIsInstallSheetOpen] = useState(false);
   
@@ -467,13 +464,14 @@ export function Sidebar({ conversations, allUsers, messages, loggedInUser, selec
   }).sort((a,b) => b.lastMessageTimestamp.getTime() - a.lastMessageTimestamp.getTime());
   
   const handleSelectNewUser = (user: User) => {
-    onSearchTermChange('');
+    setSearchTerm('');
     onSelectUser(user);
   };
-
+  
   const filteredConversations = searchTerm ? conversationDetails.filter(({ user }) => 
     user.name.toLowerCase().includes(searchTerm.toLowerCase())
   ) : conversationDetails;
+
 
   return (
     <div className="w-full md:w-1/3 md:max-w-sm lg:w-1/4 lg:max-w-md border-r flex flex-col">
@@ -502,13 +500,13 @@ export function Sidebar({ conversations, allUsers, messages, loggedInUser, selec
             placeholder="Search conversations..." 
             className="pl-10" 
             value={searchTerm}
-            onChange={(e) => onSearchTermChange(e.target.value)}
+            onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
       </div>
       <ScrollArea className="flex-1">
         <div className="p-2">
-          {filteredConversations.length > 0 ? filteredConversations.map(({ user, lastMessage, unreadCount }) => (
+           {filteredConversations.length > 0 ? filteredConversations.map(({ user, lastMessage, unreadCount }) => (
             <ConversationItem
               key={user.id}
               user={user}

@@ -48,7 +48,6 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
   const [isTyping, setIsTyping] = useState(false);
   const { user: authUser } = useAuth();
   const [loggedInUser, setLoggedInUser] = useState(initialUser);
-  const [searchTerm, setSearchTerm] = useState('');
   const [activeCall, setActiveCall] = useState<Call | null>(null);
   const [incomingCall, setIncomingCall] = useState<Call | null>(null);
   const [callId, setCallId] = useState<string | null>(null);
@@ -445,8 +444,6 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
             selectedUser={selectedUser}
             onSelectUser={handleSelectUser}
             onClearHistory={handleClearHistory}
-            searchTerm={searchTerm}
-            onSearchTermChange={setSearchTerm}
           />
         }
         { (viewToShow === 'chat' || !isMobile) &&
