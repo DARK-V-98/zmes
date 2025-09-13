@@ -31,6 +31,7 @@ import { useAuth } from './auth-provider';
 import { CallView, type Call } from './call-view';
 import { createPeerConnection, hangUp, answerCall, startCall } from '@/lib/webrtc';
 import { updateMessage, deleteMessage } from '@/app/actions';
+import type { Mood } from './mood-provider';
 
 interface ZMessengerProps {
   loggedInUser: User;
@@ -52,6 +53,7 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
   const [incomingCall, setIncomingCall] = useState<Call | null>(null);
   const [callId, setCallId] = useState<string | null>(null);
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
+  const [conversationMood, setConversationMood] = useState<Mood>('happy');
 
 
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
@@ -202,18 +204,30 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
   }, [selectedUser, messages, loggedInUser.id]);
 
 
-  // Typing status management
+  // Typing status and mood management for the current conversation
   useEffect(() => {
     if (!selectedUser || !loggedInUser.id) return;
     const conversationId = getConversationId(loggedInUser.id, selectedUser.id);
     const conversationRef = doc(db, 'conversations', conversationId);
 
     const unsubscribe = onSnapshot(conversationRef, (doc) => {
-      const data = doc.data();
-      if (data && data.typing) {
-        setIsTyping(data.typing[selectedUser.id] || false);
+      if (doc.exists()) {
+        const data = doc.data();
+        // Typing indicator
+        if (data.typing) {
+          setIsTyping(data.typing[selectedUser.id] || false);
+        } else {
+          setIsTyping(false);
+        }
+        // Conversation mood
+        if (data.mood) {
+          setConversationMood(data.mood);
+        } else {
+          setConversationMood('happy');
+        }
       } else {
-        setIsTyping(false);
+        // If conversation doc doesn't exist, create it with default mood
+        setDoc(conversationRef, { mood: 'happy' });
       }
     });
 
@@ -335,6 +349,17 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
        console.error("Error updating typing status:", error)
     }
   }
+
+  const handleSetMood = async (mood: Mood) => {
+    if (!selectedUser) return;
+    const conversationId = getConversationId(loggedInUser.id, selectedUser.id);
+    const conversationRef = doc(db, 'conversations', conversationId);
+    try {
+      await setDoc(conversationRef, { mood }, { merge: true });
+    } catch (error) {
+      console.error("Failed to update conversation mood:", error);
+    }
+  };
   
   const handleSelectUser = (user: User) => {
     setSelectedUser(user);
@@ -455,7 +480,9 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
                   onBack={() => setSelectedUser(null)} 
                   isMobile={isMobile} 
                   onClearHistory={() => handleClearHistory(selectedUser.id)} 
-                  onStartCall={handleStartCall} 
+                  onStartCall={handleStartCall}
+                  onSetMood={handleSetMood}
+                  mood={conversationMood}
                 />
                 <div className="flex-1 flex flex-col overflow-y-auto">
                     <ChatMessages 

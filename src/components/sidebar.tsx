@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { ScrollArea } from './ui/scroll-area';
-import { Search, Download, Settings, Camera, LogOut, User as UserIcon, Smile, Trash2, Share, MessageSquarePlus, Moon, Sun } from 'lucide-react';
+import { Search, Download, Settings, Camera, LogOut, User as UserIcon, Smile, Trash2, Share, MessageSquarePlus, Moon, Sun, Palette } from 'lucide-react';
 import { Input } from './ui/input';
 import {
   Dialog,
@@ -26,7 +26,7 @@ import { Label } from './ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { updateUserProfile } from '@/app/actions';
 import Image from 'next/image';
-import { Mood, useMood } from './mood-provider';
+import { Mood } from './mood-provider';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -42,9 +42,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { useTheme } from 'next-themes';
+import { useTheme, type Theme } from './theme-provider';
 
 interface SidebarProps {
   conversations: User[];
@@ -194,40 +193,41 @@ const ProfileSettingsDialog = ({ user, open, setOpen }: { user: User; open: bool
   );
 };
 
-const MoodChanger = () => {
-  const { setMood } = useMood();
-  const moods: { mood: Mood; emoji: string }[] = [
-    { mood: 'happy', emoji: '😄' },
-    { mood: 'love', emoji: '❤️' },
-    { mood: 'surprised', emoji: '😮' },
-    { mood: 'angry', emoji: '😡' },
-    { mood: 'sad', emoji: '😢' },
+const ThemeChanger = () => {
+  const { setTheme } = useTheme();
+  const themes: { name: string; theme: Theme, color: string }[] = [
+    { name: 'Light', theme: 'light', color: 'bg-slate-200' },
+    { name: 'Dark', theme: 'dark', color: 'bg-slate-800' },
+    { name: 'Blue', theme: 'theme-blue', color: 'bg-blue-500' },
+    { name: 'Green', theme: 'theme-green', color: 'bg-green-500' },
+    { name: 'Pink', theme: 'theme-pink', color: 'bg-pink-500' },
+    { name: 'Orange', theme: 'theme-orange', color: 'bg-orange-500' },
   ];
 
   return (
     <Popover>
       <PopoverTrigger asChild>
         <Button variant="ghost" className="w-full justify-start">
-          <Smile className="mr-2 h-4 w-4" /> Set Mood
+          <Palette className="mr-2 h-4 w-4" /> Change Theme
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-2">
-        <div className="flex gap-2">
-          {moods.map(({ mood, emoji }) => (
-            <TooltipProvider key={mood}>
+        <div className="grid grid-cols-3 gap-2">
+          {themes.map(({ name, theme, color }) => (
+            <TooltipProvider key={name}>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="text-2xl rounded-full"
-                    onClick={() => setMood(mood)}
+                    className="h-10 w-10"
+                    onClick={() => setTheme(theme)}
                   >
-                    {emoji}
+                    <div className={cn("h-6 w-6 rounded-full", color)} />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>{mood.charAt(0).toUpperCase() + mood.slice(1)}</p>
+                  <p>{name}</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -238,21 +238,6 @@ const MoodChanger = () => {
   );
 };
 
-const ThemeChanger = () => {
-  const { theme, setTheme } = useTheme();
-
-  return (
-    <Button 
-      variant="ghost" 
-      className="w-full justify-start" 
-      onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-    >
-      <Sun className="mr-2 h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-      <Moon className="absolute mr-2 h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-      Toggle theme
-    </Button>
-  );
-}
 
 const UserMenu = ({ user }: { user: User }) => {
     const router = useRouter();
@@ -283,7 +268,6 @@ const UserMenu = ({ user }: { user: User }) => {
                         <Button variant="ghost" className="w-full justify-start" onClick={() => setIsSettingsOpen(true)}>
                            <UserIcon className="mr-2 h-4 w-4" /> Edit Profile
                         </Button>
-                        <MoodChanger />
                         <ThemeChanger />
                         <Button variant="ghost" className="w-full justify-start" onClick={handleLogout}>
                             <LogOut className="mr-2 h-4 w-4" /> Logout
@@ -388,36 +372,36 @@ const ConversationItem = ({
   };
 
   return (
-    <ContextMenu>
-      <ContextMenuTrigger>
-        <Button
-          variant="ghost"
-          className={cn(
-            'w-full h-auto justify-start items-center p-3 text-left rounded-lg transition-colors',
-            selectedUser?.id === user.id && 'bg-secondary'
-          )}
-          onClick={() => onSelectUser(user)}
-        >
-          <Avatar className="h-10 w-10 sm:h-12 sm:w-12 mr-4 relative">
-            <AvatarImage src={user.avatar} alt={user.name} data-ai-hint="profile picture" />
-            <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-            {user.isOnline && (
-              <div className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-accent ring-2 ring-background"></div>
+     <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
+      <ContextMenu>
+        <ContextMenuTrigger>
+          <Button
+            variant="ghost"
+            className={cn(
+              'w-full h-auto justify-start items-center p-3 text-left rounded-lg transition-colors',
+              selectedUser?.id === user.id && 'bg-secondary'
             )}
-          </Avatar>
-          <div className="flex-1 overflow-hidden">
-            <p className="font-semibold truncate">{user.name}</p>
-            {lastMessage && (
-              <p className="text-sm text-muted-foreground truncate">{lastMessage}</p>
+            onClick={() => onSelectUser(user)}
+          >
+            <Avatar className="h-10 w-10 sm:h-12 sm:w-12 mr-4 relative">
+              <AvatarImage src={user.avatar} alt={user.name} data-ai-hint="profile picture" />
+              <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+              {user.isOnline && (
+                <div className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-accent ring-2 ring-background"></div>
+              )}
+            </Avatar>
+            <div className="flex-1 overflow-hidden">
+              <p className="font-semibold truncate">{user.name}</p>
+              {lastMessage && (
+                <p className="text-sm text-muted-foreground truncate">{lastMessage}</p>
+              )}
+            </div>
+            {unreadCount !== undefined && unreadCount > 0 && (
+              <Badge className="bg-primary text-primary-foreground ml-2">{unreadCount}</Badge>
             )}
-          </div>
-          {unreadCount !== undefined && unreadCount > 0 && (
-            <Badge className="bg-primary text-primary-foreground ml-2">{unreadCount}</Badge>
-          )}
-        </Button>
-      </ContextMenuTrigger>
-      {onClearHistory && (
-         <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
+          </Button>
+        </ContextMenuTrigger>
+        {onClearHistory && (
             <ContextMenuContent>
                 <ContextMenuItem onClick={() => onSelectUser(user)}>Open Chat</ContextMenuItem>
                  <AlertDialogTrigger asChild>
@@ -426,27 +410,26 @@ const ConversationItem = ({
                     </ContextMenuItem>
                 </AlertDialogTrigger>
             </ContextMenuContent>
-            <AlertDialogContent>
-                <AlertDialogHeader>
-                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                <AlertDialogDescription>
-                    This will delete the chat history for you only. The other person will still see the messages. This action cannot be undone.
-                </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDeleteChat}>Continue</AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
-      )}
-    </ContextMenu>
+        )}
+      </ContextMenu>
+      <AlertDialogContent>
+          <AlertDialogHeader>
+          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+          <AlertDialogDescription>
+              This will delete the chat history for you only. The other person will still see the messages. This action cannot be undone.
+          </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={handleDeleteChat}>Continue</AlertDialogAction>
+          </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 };
 
 
 export function Sidebar({ conversations, allUsers, messages, loggedInUser, selectedUser, onSelectUser, onClearHistory }: SidebarProps) {
-  const otherUsers = allUsers.filter(u => u.id !== loggedInUser.id);
   const [searchTerm, setSearchTerm] = useState('');
   const { canInstall, install } = usePWAInstall();
   const [isInstallSheetOpen, setIsInstallSheetOpen] = useState(false);
@@ -489,7 +472,7 @@ export function Sidebar({ conversations, allUsers, messages, loggedInUser, selec
     user.name.toLowerCase().includes(searchTerm.toLowerCase())
   ) : conversationDetails;
 
-  const usersForNewChat = otherUsers.filter(u => !conversations.some(c => c.id === u.id));
+  const usersForNewChat = allUsers.filter(u => !conversations.some(c => c.id === u.id));
 
   return (
     <div className="w-full md:w-1/3 md:max-w-sm lg:w-1/4 lg:max-w-md border-r flex flex-col">

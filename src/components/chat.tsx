@@ -1,14 +1,15 @@
 
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React from 'react';
+import { useState, useRef, useEffect } from 'react';
 import type { Message, User } from '@/lib/data';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Check, CheckCheck, MoreVertical, Paperclip, Send, SmilePlus, ArrowLeft, Trash2, Phone, Edit, X } from 'lucide-react';
+import { Check, CheckCheck, MoreVertical, Paperclip, Send, SmilePlus, ArrowLeft, Trash2, Phone, Edit, X, Smile } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import {
@@ -28,9 +29,61 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { AlertDialogTrigger } from '@radix-ui/react-alert-dialog';
+import { Mood, useMood } from './mood-provider';
+import { THEME_MAP } from './theme-provider';
+
+const MoodChanger = ({ onSetMood }: { onSetMood: (mood: Mood) => void }) => {
+  const moods: { mood: Mood; emoji: string }[] = [
+    { mood: 'happy', emoji: '😄' },
+    { mood: 'love', emoji: '❤️' },
+    { mood: 'surprised', emoji: '😮' },
+    { mood: 'angry', emoji: '😡' },
+    { mood: 'sad', emoji: '😢' },
+  ];
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+         <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <Smile />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Set chat mood</TooltipContent>
+            </Tooltip>
+        </TooltipProvider>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-2">
+        <div className="flex gap-2">
+          {moods.map(({ mood, emoji }) => (
+            <TooltipProvider key={mood}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-2xl rounded-full"
+                    onClick={() => onSetMood(mood)}
+                  >
+                    {emoji}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{mood.charAt(0).toUpperCase() + mood.slice(1)}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+};
 
 
-export const ChatHeader = ({ user, onBack, isMobile, onClearHistory, onStartCall }: { user: User, onBack?: () => void, isMobile: boolean, onClearHistory: () => void, onStartCall: (user: User) => void }) => {
+export const ChatHeader = ({ user, onBack, isMobile, onClearHistory, onStartCall, onSetMood, mood }: { user: User, onBack?: () => void, isMobile: boolean, onClearHistory: () => void, onStartCall: (user: User) => void, onSetMood: (mood: Mood) => void, mood: Mood }) => {
   const [isAlertOpen, setIsAlertOpen] = useState(false);
 
   const handleClearHistory = () => {
@@ -39,7 +92,7 @@ export const ChatHeader = ({ user, onBack, isMobile, onClearHistory, onStartCall
   }
 
   return (
-    <div className="flex items-center p-2 sm:p-4 border-b bg-card z-10">
+    <div className={cn("flex items-center p-2 sm:p-4 border-b bg-card z-10 transition-colors", THEME_MAP[mood])}>
       {isMobile && (
           <Button variant="ghost" size="icon" className="mr-2 h-8 w-8" onClick={onBack}>
             <ArrowLeft />
@@ -56,6 +109,7 @@ export const ChatHeader = ({ user, onBack, isMobile, onClearHistory, onStartCall
           <span className="text-xs text-muted-foreground">{user.isOnline ? 'Online' : 'Offline'}</span>
         </div>
       </div>
+      <MoodChanger onSetMood={onSetMood} />
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>

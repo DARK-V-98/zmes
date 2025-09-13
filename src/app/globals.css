@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -58,114 +59,63 @@
     --chart-5: 340 75% 55%;
   }
 
+  /* Global App Themes */
   .theme-blue {
-    --background: 210 17% 95%;
-    --foreground: 210 10% 23%;
+    --primary: 207 70% 53%;
+    --ring: 207 70% 53%;
+  }
+
+  .theme-green {
+    --primary: 145 63% 49%;
+    --ring: 145 63% 49%;
+  }
+
+  .theme-pink {
+    --primary: 340 82% 52%;
+    --ring: 340 82% 52%;
+  }
+
+  .theme-orange {
+    --primary: 25 95% 53%;
+    --ring: 25 95% 53%;
+  }
+
+  /* Chat-specific Moods */
+  .mood-happy {
     --card: 0 0% 100%;
     --card-foreground: 210 10% 23%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 210 10% 23%;
-    --primary: 207 70% 53%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 210 16% 90%;
-    --secondary-foreground: 210 10% 23%;
-    --muted: 210 16% 90%;
-    --muted-foreground: 210 10% 45%;
-    --accent: 145 63% 49%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 210 15% 88%;
-    --input: 210 15% 88%;
-    --ring: 207 70% 53%;
   }
-
-  .theme-sad {
-    --background: 210 10% 12%;
-    --foreground: 0 0% 98%;
-    --card: 210 10% 15%;
+  .dark .mood-happy {
+     --card: 210 10% 15%;
     --card-foreground: 0 0% 98%;
-    --popover: 210 10% 12%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 207 70% 53%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 210 10% 20%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 210 10% 20%;
-    --muted-foreground: 210 10% 65%;
-    --accent: 145 63% 49%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 210 10% 25%;
-    --input: 210 10% 25%;
-    --ring: 207 70% 53%;
   }
 
-  .theme-angry {
-    --background: 10 20% 96%;
-    --foreground: 10 10% 20%;
-    --card: 0 0% 100%;
-    --card-foreground: 10 10% 20%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 10 10% 20%;
-    --primary: 0 72% 51%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 10 20% 90%;
-    --secondary-foreground: 10 10% 20%;
-    --muted: 10 20% 90%;
-    --muted-foreground: 10 10% 45%;
-    --accent: 35 80% 55%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 10 20% 88%;
-    --input: 10 20% 88%;
-    --ring: 0 72% 51%;
+  .mood-sad {
+    --card: 210 20% 80%;
+  }
+  .dark .mood-sad {
+     --card: 210 10% 25%;
+  }
+  
+  .mood-angry {
+    --card: 0 40% 90%;
+  }
+   .dark .mood-angry {
+     --card: 0 30% 20%;
   }
 
-  .theme-love {
-    --background: 340 30% 97%;
-    --foreground: 340 10% 25%;
-    --card: 0 0% 100%;
-    --card-foreground: 340 10% 25%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 340 10% 25%;
-    --primary: 207 70% 53%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 340 30% 92%;
-    --secondary-foreground: 340 10% 25%;
-    --muted: 340 30% 92%;
-    --muted-foreground: 340 10% 50%;
-    --accent: 145 63% 49%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 340 30% 90%;
-    --input: 340 30% 90%;
-    --ring: 207 70% 53%;
+  .mood-love {
+     --card: 340 50% 95%;
+  }
+  .dark .mood-love {
+     --card: 340 30% 20%;
   }
 
-  .theme-surprised {
-    --background: 90 20% 96%;
-    --foreground: 90 10% 20%;
-    --card: 0 0% 100%;
-    --card-foreground: 90 10% 20%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 90 10% 20%;
-    --primary: 145 63% 49%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 90 20% 90%;
-    --secondary-foreground: 90 10% 20%;
-    --muted: 90 20% 90%;
-    --muted-foreground: 90 10% 45%;
-    --accent: 45 85% 55%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 90 20% 88%;
-    --input: 90 20% 88%;
-    --ring: 145 63% 49%;
+  .mood-surprised {
+    --card: 50 100% 90%;
+  }
+   .dark .mood-surprised {
+     --card: 50 30% 20%;
   }
 }
 
