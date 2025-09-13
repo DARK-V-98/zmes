@@ -5,6 +5,59 @@ import { doc, updateDoc, setDoc, collection, query, where, getDocs, or } from 'f
 import { getDownloadURL, ref, uploadString } from 'firebase/storage';
 import type { User } from '@/lib/data';
 
+export async function updateUserProfile(userId: string, updates: Partial<User>) {
+  if (!userId) {
+    throw new Error('You must be logged in to update your profile.');
+  }
+
+  try {
+    const userDocRef = doc(db, 'users', userId);
+    
+    // Handle cover photo upload
+    if (updates.coverPhotoURL && updates.coverPhotoURL.startsWith('data:image')) {
+      const storageRef = ref(storage, `cover_photos/${userId}`);
+      const match = updates.coverPhotoURL.match(/^data:(.+);base64,(.+)$/);
+        if (!match) {
+          throw new Error('Invalid image data URI');
+        }
+      const contentType = match[1];
+      await uploadString(storageRef, updates.coverPhotoURL, 'data_url', { contentType });
+      updates.coverPhotoURL = await getDownloadURL(storageRef);
+    }
+    
+    // Handle profile photo upload
+    if (updates.avatar && updates.avatar.startsWith('data:image')) {
+      const storageRef = ref(storage, `avatars/${userId}`);
+       const match = updates.avatar.match(/^data:(.+);base64,(.+)$/);
+        if (!match) {
+          throw new Error('Invalid image data URI');
+        }
+      const contentType = match[1];
+      await uploadString(storageRef, updates.avatar, 'data_url', { contentType });
+      updates.avatar = await getDownloadURL(storageRef);
+    }
+    
+    // Rename name to displayName for firestore
+    if('name' in updates){
+        (updates as any).displayName = updates.name;
+        delete updates.name;
+    }
+     if('avatar' in updates){
+        (updates as any).photoURL = updates.avatar;
+        delete updates.avatar;
+    }
+
+    await updateDoc(userDocRef, updates);
+
+    return { success: true, message: 'Profile updated successfully.' };
+
+  } catch (error: any) {
+    console.error('Error updating profile:', error);
+    return { success: false, message: error.message };
+  }
+}
+
+
 export async function updateUserProfileUrl(userId: string, name: string, photoURL: string | null) {
   if (!userId) {
     throw new Error('You must be logged in to update your profile.');

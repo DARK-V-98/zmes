@@ -4,6 +4,9 @@ export type User = {
   name: string;
   isOnline?: boolean;
   email?: string;
+  coverPhotoURL?: string;
+  phoneNumber?: string;
+  socialLinks?: { type: 'facebook' | 'instagram' | 'twitter' | 'website'; url: string }[];
 };
 
 export type Message = {

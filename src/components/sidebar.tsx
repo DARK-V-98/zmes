@@ -20,13 +20,9 @@ import {
 import { usePWAInstall } from './pwa-install-provider';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from './ui/tooltip';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
-import { auth, storage } from '@/lib/firebase';
-import { getDownloadURL, ref, uploadString } from 'firebase/storage';
+import { auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
-import { Label } from './ui/label';
-import { useToast } from '@/hooks/use-toast';
-import { updateUserProfileUrl, searchUsers } from '@/app/actions';
-import { Mood } from './mood-provider';
+import { searchUsers } from '@/app/actions';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -46,7 +42,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useTheme, type Theme } from './theme-provider';
 import { Logo } from './logo';
-import { updateProfile } from 'firebase/auth';
+import Link from 'next/link';
+
 
 interface SidebarProps {
   conversations: User[];
@@ -74,147 +71,6 @@ const IOSInstallInstructions = ({ open, onOpenChange }: { open: boolean, onOpenC
         </DialogContent>
     </Dialog>
 );
-
-const ProfileSettingsDialog = ({ user, open, setOpen }: { user: User; open: boolean, setOpen: (open: boolean) => void; }) => {
-  const [name, setName] = useState(user.name);
-  const [imagePreview, setImagePreview] = useState<string | null>(user.avatar);
-  const [imageData, setImageData] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const { toast } = useToast();
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const result = reader.result as string;
-        setImagePreview(result);
-        setImageData(result);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim()) {
-       toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Name cannot be empty.',
-      });
-      return;
-    }
-    const currentUser = auth.currentUser;
-    if (!currentUser) {
-       toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'You must be logged in to update your profile.',
-      });
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      let newPhotoURL: string | null = user.avatar;
-
-      if (imageData) {
-        const storageRef = ref(storage, `avatars/${currentUser.uid}`);
-        
-        const match = imageData.match(/^data:(.+);base64,(.+)$/);
-        if (!match) {
-          throw new Error('Invalid image data URI');
-        }
-        const contentType = match[1];
-        const base64Data = match[2];
-
-        await uploadString(storageRef, base64Data, 'base64', { contentType });
-        newPhotoURL = await getDownloadURL(storageRef);
-      }
-
-      // Now call the server action to update Firestore
-      const result = await updateUserProfileUrl(currentUser.uid, name, newPhotoURL);
-      
-      if (result.success) {
-        // Client-side update of the auth profile
-        await updateProfile(currentUser, { displayName: name, photoURL: newPhotoURL ?? undefined });
-        
-        toast({
-          title: 'Success',
-          description: result.message,
-        });
-        setOpen(false);
-      } else {
-        throw new Error(result.message);
-      }
-    } catch (error: any) {
-      console.error('Error updating profile:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Error updating profile',
-        description: error.message,
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Edit Profile</DialogTitle>
-          <DialogDescription>
-            Make changes to your profile here. Click save when you're done.
-          </DialogDescription>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 py-4">
-          <div className="flex items-center space-x-4">
-            <div className="relative">
-              <Avatar className="h-20 w-20">
-                <AvatarImage src={imagePreview || undefined} alt={name} />
-                <AvatarFallback>{name.charAt(0)}</AvatarFallback>
-              </Avatar>
-              <Button
-                type="button"
-                size="icon"
-                className="absolute bottom-0 right-0 rounded-full h-7 w-7"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <Camera className="h-4 w-4" />
-              </Button>
-              <input
-                type="file"
-                ref={fileInputRef}
-                className="hidden"
-                accept="image/*"
-                onChange={handleImageChange}
-              />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="name">Name</Label>
-            <Input
-              id="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-            />
-          </div>
-          <DialogFooter>
-             <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? 'Saving...' : 'Save changes'}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-};
 
 const ThemeChanger = () => {
   const { setTheme } = useTheme();
@@ -264,7 +120,6 @@ const ThemeChanger = () => {
 
 const UserMenu = ({ user }: { user: User }) => {
     const router = useRouter();
-    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
     const handleLogout = async () => {
         await auth.signOut();
@@ -288,8 +143,15 @@ const UserMenu = ({ user }: { user: User }) => {
                 </PopoverTrigger>
                 <PopoverContent className="w-60 p-2">
                     <div className="flex flex-col gap-1">
-                        <Button variant="ghost" className="w-full justify-start" onClick={() => setIsSettingsOpen(true)}>
-                           <UserIcon className="mr-2 h-4 w-4" /> Edit Profile
+                        <Button asChild variant="ghost" className="w-full justify-start">
+                            <Link href={`/profile/${user.id}`}>
+                               <UserIcon className="mr-2 h-4 w-4" /> View Profile
+                            </Link>
+                        </Button>
+                        <Button asChild variant="ghost" className="w-full justify-start">
+                           <Link href={`/profile/${user.id}/edit`}>
+                             <Settings className="mr-2 h-4 w-4" /> Edit Profile
+                           </Link>
                         </Button>
                         <ThemeChanger />
                         <Button variant="ghost" className="w-full justify-start" onClick={handleLogout}>
@@ -298,7 +160,6 @@ const UserMenu = ({ user }: { user: User }) => {
                     </div>
                 </PopoverContent>
             </Popover>
-            <ProfileSettingsDialog user={user} open={isSettingsOpen} setOpen={setIsSettingsOpen} />
         </>
     );
 };
@@ -505,7 +366,7 @@ export function Sidebar({ conversations, loggedInUser, selectedUser, onSelectUse
 
     return {
       user,
-      lastMessage: lastMessage ? lastMessage.content : 'No messages yet',
+      lastMessage: lastMessage?.fileURL ? (lastMessage.fileType?.startsWith('image') ? '📷 Image' : '📎 Attachment') : lastMessage?.content ?? 'No messages yet',
       lastMessageTimestamp: lastMessage ? lastMessage.timestamp : new Date(0),
       unreadCount,
     };

@@ -33,6 +33,7 @@ import { Mood, useMood } from './mood-provider';
 import { THEME_MAP } from './theme-provider';
 import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
+import Link from 'next/link';
 
 const MoodChanger = ({ onSetMood }: { onSetMood: (mood: Mood) => void }) => {
   const moods: { mood: Mood; emoji: string }[] = [
@@ -100,17 +101,19 @@ export const ChatHeader = ({ user, onBack, isMobile, onClearHistory, onStartCall
             <ArrowLeft />
           </Button>
         )}
-      <Avatar className="h-8 w-8 sm:h-10 sm:w-10 mr-2 sm:mr-4">
-        <AvatarImage src={user.avatar} alt={user.name} data-ai-hint="profile picture" />
-        <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-      </Avatar>
-      <div className="flex-1">
-        <p className="font-semibold text-sm sm:text-base">{user.name}</p>
-        <div className="flex items-center gap-1.5">
-          <span className={cn("h-2.5 w-2.5 rounded-full", user.isOnline ? "bg-accent" : "bg-gray-400")}></span>
-          <span className="text-xs text-muted-foreground">{user.isOnline ? 'Online' : 'Offline'}</span>
+      <Link href={`/profile/${user.id}`} className="flex items-center flex-1 gap-2 sm:gap-4 group">
+        <Avatar className="h-8 w-8 sm:h-10 sm:w-10">
+          <AvatarImage src={user.avatar} alt={user.name} data-ai-hint="profile picture" />
+          <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+        </Avatar>
+        <div className="flex-1">
+          <p className="font-semibold text-sm sm:text-base group-hover:underline">{user.name}</p>
+          <div className="flex items-center gap-1.5">
+            <span className={cn("h-2.5 w-2.5 rounded-full", user.isOnline ? "bg-accent" : "bg-gray-400")}></span>
+            <span className="text-xs text-muted-foreground">{user.isOnline ? 'Online' : 'Offline'}</span>
+          </div>
         </div>
-      </div>
+      </Link>
       <MoodChanger onSetMood={onSetMood} />
       <TooltipProvider>
         <Tooltip>
@@ -222,6 +225,7 @@ const ChatMessage = ({
     }
     
     const isImage = message.fileType?.startsWith('image/');
+    const isVideo = message.fileType?.startsWith('video/');
 
     return (
       <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
@@ -244,9 +248,11 @@ const ChatMessage = ({
                   isSender ? 'bg-primary text-primary-foreground rounded-br-none' : 'bg-card border rounded-bl-none',
                   message.isDeleted && 'italic text-muted-foreground'
                 )}>
-                  {message.fileURL ? (
+                   {message.fileURL ? (
                     isImage ? (
                         <Image src={message.fileURL} alt={message.fileName || 'Uploaded image'} width={200} height={200} className="rounded-lg max-w-xs" />
+                    ) : isVideo ? (
+                        <video src={message.fileURL} controls className="rounded-lg max-w-xs"></video>
                     ) : (
                        <a href={message.fileURL} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-2 rounded-lg bg-background/50 hover:bg-background">
                             <File className="h-6 w-6" />
@@ -480,7 +486,7 @@ export const ChatInput = ({ onSendMessage, onUpdateMessage, onTyping, editingMes
           className="pr-16 sm:pr-20 h-10 sm:h-11 rounded-full"
         />
         <div className="absolute top-1/2 right-2 -translate-y-1/2 flex items-center gap-1">
-            <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
+            <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*,video/*" />
             <TooltipProvider>
                 <Tooltip>
                     <TooltipTrigger asChild>
