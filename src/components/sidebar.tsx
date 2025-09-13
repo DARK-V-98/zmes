@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { ScrollArea } from './ui/scroll-area';
-import { MessageSquarePlus, Search, Download, Settings, Camera, LogOut, User as UserIcon, Smile, Trash2, Share } from 'lucide-react';
+import { Search, Download, Settings, Camera, LogOut, User as UserIcon, Smile, Trash2, Share } from 'lucide-react';
 import { Input } from './ui/input';
 import {
   Dialog,
@@ -73,78 +73,6 @@ const IOSInstallInstructions = ({ open, onOpenChange }: { open: boolean, onOpenC
         </DialogContent>
     </Dialog>
 );
-
-const NewChatDialog = ({ users, onSelectUser }: { users: User[], onSelectUser: (user: User) => void; }) => {
-  const [open, setOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-
-  const filteredUsers = users.filter(user =>
-    user.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-  
-  const handleSelect = (user: User) => {
-    onSelectUser(user);
-    setOpen(false);
-    setSearchTerm('');
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <DialogTrigger asChild>
-              <Button variant="ghost" size="icon" className="rounded-full">
-                  <MessageSquarePlus />
-              </Button>
-            </DialogTrigger>
-          </TooltipTrigger>
-          <TooltipContent>New Chat</TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Start a new chat</DialogTitle>
-        </DialogHeader>
-        <div className="py-4 space-y-4">
-           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-            <Input
-              placeholder="Search by name"
-              className="pl-10"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <ScrollArea className="h-72">
-            {filteredUsers.map(user => (
-              <Button
-                key={user.id}
-                variant="ghost"
-                className="w-full h-auto justify-start items-center p-3 text-left rounded-lg"
-                onClick={() => handleSelect(user)}
-              >
-                <Avatar className="h-10 w-10 mr-4 relative">
-                  <AvatarImage src={user.avatar} alt={user.name} />
-                  <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-                  {user.isOnline && (
-                    <div className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-accent ring-2 ring-background"></div>
-                  )}
-                </Avatar>
-                <p className="font-semibold truncate">{user.name}</p>
-              </Button>
-            ))}
-             {filteredUsers.length === 0 && (
-              <div className="text-center text-muted-foreground py-10">
-                No users found.
-              </div>
-            )}
-          </ScrollArea>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 const ProfileSettingsDialog = ({ user, open, setOpen }: { user: User; open: boolean, setOpen: (open: boolean) => void; }) => {
   const [name, setName] = useState(user.name);
@@ -362,16 +290,18 @@ const ConversationItem = ({
   onClearHistory,
 }: {
   user: User;
-  lastMessage: string;
-  unreadCount: number;
+  lastMessage?: string;
+  unreadCount?: number;
   selectedUser: User | null;
   onSelectUser: (user: User) => void;
-  onClearHistory: (userId: string) => void;
+  onClearHistory?: (userId: string) => void;
 }) => {
   const [isAlertOpen, setIsAlertOpen] = useState(false);
 
   const handleDeleteChat = () => {
-    onClearHistory(user.id);
+    if (onClearHistory) {
+      onClearHistory(user.id);
+    }
     setIsAlertOpen(false);
   };
 
@@ -396,22 +326,27 @@ const ConversationItem = ({
             </Avatar>
             <div className="flex-1 overflow-hidden">
               <p className="font-semibold truncate">{user.name}</p>
-              <p className="text-sm text-muted-foreground truncate">{lastMessage}</p>
+              {lastMessage && (
+                <p className="text-sm text-muted-foreground truncate">{lastMessage}</p>
+              )}
             </div>
-            {unreadCount > 0 && (
+            {unreadCount !== undefined && unreadCount > 0 && (
               <Badge className="bg-primary text-primary-foreground ml-2">{unreadCount}</Badge>
             )}
           </Button>
         </ContextMenuTrigger>
-        <ContextMenuContent>
-          <ContextMenuItem onClick={() => onSelectUser(user)}>Open Chat</ContextMenuItem>
-          <AlertDialogTrigger asChild>
-            <ContextMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
-              <Trash2 className="mr-2 h-4 w-4" /> Delete Chat
-            </ContextMenuItem>
-          </AlertDialogTrigger>
-        </ContextMenuContent>
+        {onClearHistory && (
+          <ContextMenuContent>
+            <ContextMenuItem onClick={() => onSelectUser(user)}>Open Chat</ContextMenuItem>
+            <AlertDialogTrigger asChild>
+              <ContextMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
+                <Trash2 className="mr-2 h-4 w-4" /> Delete Chat
+              </ContextMenuItem>
+            </AlertDialogTrigger>
+          </ContextMenuContent>
+        )}
       </ContextMenu>
+      {onClearHistory && (
        <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Are you sure?</AlertDialogTitle>
@@ -424,6 +359,7 @@ const ConversationItem = ({
           <AlertDialogAction onClick={handleDeleteChat}>Continue</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
+      )}
     </AlertDialog>
   );
 };
@@ -447,7 +383,6 @@ export function Sidebar({ conversations, allUsers, messages, loggedInUser, selec
     }
   };
 
-
   const conversationDetails = conversations.map(user => {
     const userMessages = messages
       .filter(m => !m.deletedFor?.includes(loggedInUser.id) && ((m.senderId === user.id && m.receiverId === loggedInUser.id) || (m.senderId === loggedInUser.id && m.receiverId === user.id)))
@@ -463,10 +398,20 @@ export function Sidebar({ conversations, allUsers, messages, loggedInUser, selec
       unreadCount,
     };
   }).sort((a,b) => b.lastMessageTimestamp.getTime() - a.lastMessageTimestamp.getTime());
+  
+  const handleSelectNewUser = (user: User) => {
+    onSearchTermChange('');
+    onSelectUser(user);
+  };
 
-  const filteredConversations = conversationDetails.filter(({ user }) => 
+  const filteredConversations = searchTerm ? conversationDetails.filter(({ user }) => 
     user.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  ) : conversationDetails;
+
+  const conversationUserIds = new Set(conversations.map(c => c.id));
+  const filteredNewUsers = searchTerm ? otherUsers.filter(user => 
+    !conversationUserIds.has(user.id) && user.name.toLowerCase().includes(searchTerm.toLowerCase())
+  ) : [];
 
   return (
     <div className="w-full md:w-1/3 md:max-w-sm lg:w-1/4 lg:max-w-md border-r flex flex-col">
@@ -485,14 +430,13 @@ export function Sidebar({ conversations, allUsers, messages, loggedInUser, selec
               </Tooltip>
             </TooltipProvider>
           )}
-          <NewChatDialog users={otherUsers} onSelectUser={onSelectUser} />
         </div>
       </div>
        <div className="p-2 sm:p-4 border-b">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
           <Input 
-            placeholder="Search" 
+            placeholder="Search or start new chat" 
             className="pl-10" 
             value={searchTerm}
             onChange={(e) => onSearchTermChange(e.target.value)}
@@ -501,6 +445,9 @@ export function Sidebar({ conversations, allUsers, messages, loggedInUser, selec
       </div>
       <ScrollArea className="flex-1">
         <div className="p-2">
+          {searchTerm && filteredConversations.length > 0 && (
+            <p className="px-3 py-2 text-xs font-semibold text-muted-foreground">Conversations</p>
+          )}
           {filteredConversations.length > 0 ? filteredConversations.map(({ user, lastMessage, unreadCount }) => (
             <ConversationItem
               key={user.id}
@@ -511,9 +458,27 @@ export function Sidebar({ conversations, allUsers, messages, loggedInUser, selec
               onSelectUser={onSelectUser}
               onClearHistory={onClearHistory}
             />
-          )) : (
+          )) : !searchTerm && (
             <div className="text-center text-muted-foreground py-10">
-              {searchTerm ? 'No conversations found.' : 'No active conversations.'}
+              No active conversations.
+            </div>
+          )}
+
+          {searchTerm && filteredNewUsers.length > 0 && (
+            <p className="px-3 py-2 text-xs font-semibold text-muted-foreground">New Contacts</p>
+          )}
+          {filteredNewUsers.map(user => (
+              <ConversationItem
+                key={user.id}
+                user={user}
+                selectedUser={selectedUser}
+                onSelectUser={handleSelectNewUser}
+              />
+          ))}
+
+          {searchTerm && filteredConversations.length === 0 && filteredNewUsers.length === 0 && (
+             <div className="text-center text-muted-foreground py-10">
+              No users or conversations found.
             </div>
           )}
         </div>
