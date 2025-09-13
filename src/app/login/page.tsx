@@ -57,7 +57,10 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      const userDocRef = doc(db, 'users', user.uid);
+      await updateDoc(userDocRef, { isOnline: true, lastSeen: serverTimestamp() });
       router.push('/');
     } catch (error: any) {
       const errorMessage =
@@ -108,11 +111,7 @@ export default function LoginPage() {
         if (userData.photoURL !== user.photoURL) {
             updates.photoURL = user.photoURL!;
         }
-        if (Object.keys(updates).length > 2) { // only update if name or photo changed
-            await updateDoc(userDocRef, updates);
-        } else {
-             await updateDoc(userDocRef, { isOnline: true, lastSeen: serverTimestamp() });
-        }
+        await updateDoc(userDocRef, updates);
       }
 
       router.push('/');
