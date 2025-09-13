@@ -18,13 +18,6 @@ import { updateUserProfile } from '@/app/actions';
 import { ArrowLeft, Camera, Facebook, Instagram, Link as LinkIcon, PlusCircle, Trash2, Twitter } from 'lucide-react';
 import Image from 'next/image';
 
-// This function is required for static exports with dynamic routes.
-// We return an empty array because we don't want to pre-render any pages at build time.
-// The edit page will be rendered dynamically on the client side.
-export async function generateStaticParams() {
-    return [];
-}
-
 type SocialLink = { type: 'facebook' | 'instagram' | 'twitter' | 'website'; url: string };
 
 // Helper function to upload an image and get the URL
@@ -293,5 +286,3 @@ export default function EditProfilePage() {
         </div>
     );
 }
-
-    
