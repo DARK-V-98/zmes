@@ -198,16 +198,10 @@ const NewChatDialog = ({ loggedInUser, onSelectUser }: { loggedInUser: User, onS
   return (
     <Dialog open={isOpen} onOpenChange={resetState}>
       <DialogTrigger asChild>
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="rounded-full">
-                <MessageSquarePlus />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>New Chat</TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <Button variant="outline" className="w-full">
+            <MessageSquarePlus className="mr-2 h-4 w-4" />
+            New Chat
+        </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
@@ -405,7 +399,6 @@ export function Sidebar({ conversations, loggedInUser, selectedUser, onSelectUse
               </Tooltip>
             </TooltipProvider>
           )}
-           <NewChatDialog loggedInUser={loggedInUser} onSelectUser={onSelectUser} />
         </div>
       </div>
        <div className="p-2 sm:p-4 border-b">
@@ -438,7 +431,8 @@ export function Sidebar({ conversations, loggedInUser, selectedUser, onSelectUse
           )}
         </div>
       </ScrollArea>
-       <div className="p-2 border-t">
+       <div className="p-2 border-t space-y-2">
+        <NewChatDialog loggedInUser={loggedInUser} onSelectUser={onSelectUser} />
         <UserMenu user={loggedInUser} />
       </div>
       <IOSInstallInstructions open={isInstallSheetOpen} onOpenChange={setIsInstallSheetOpen} />
