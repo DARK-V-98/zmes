@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { ScrollArea } from './ui/scroll-area';
-import { Search, Download, Settings, Camera, LogOut, User as UserIcon, Smile, Trash2, Share } from 'lucide-react';
+import { Search, Download, Settings, Camera, LogOut, User as UserIcon, Smile, Trash2, Share, MessageSquarePlus } from 'lucide-react';
 import { Input } from './ui/input';
 import {
   Dialog,
@@ -281,6 +281,73 @@ const UserMenu = ({ user }: { user: User }) => {
     );
 };
 
+const NewChatDialog = ({ users, onSelectUser }: { users: User[], onSelectUser: (user: User) => void }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState('');
+
+  const filteredUsers = search
+    ? users.filter(user => user.name.toLowerCase().includes(search.toLowerCase()))
+    : [];
+
+  const handleSelect = (user: User) => {
+    onSelectUser(user);
+    setIsOpen(false);
+    setSearch('');
+  }
+
+  return (
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className="rounded-full">
+                <MessageSquarePlus />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>New Chat</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Start a new chat</DialogTitle>
+          <DialogDescription>
+            Search for a user by name or email to start a conversation.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="py-2">
+          <Input 
+            placeholder="Search by name or email..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <ScrollArea className="max-h-60">
+          <div className="pr-4">
+            {filteredUsers.length > 0 ? (
+              filteredUsers.map(user => (
+                <div key={user.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-secondary">
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={user.avatar} alt={user.name} />
+                      <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <p className="font-semibold">{user.name}</p>
+                  </div>
+                  <Button size="sm" onClick={() => handleSelect(user)}>Chat</Button>
+                </div>
+              ))
+            ) : search && (
+              <p className="text-center text-sm text-muted-foreground py-4">No users found.</p>
+            )}
+          </div>
+        </ScrollArea>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 const ConversationItem = ({
   user,
   lastMessage,
@@ -408,11 +475,6 @@ export function Sidebar({ conversations, allUsers, messages, loggedInUser, selec
     user.name.toLowerCase().includes(searchTerm.toLowerCase())
   ) : conversationDetails;
 
-  const conversationUserIds = new Set(conversations.map(c => c.id));
-  const filteredNewUsers = searchTerm ? otherUsers.filter(user => 
-    !conversationUserIds.has(user.id) && user.name.toLowerCase().includes(searchTerm.toLowerCase())
-  ) : [];
-
   return (
     <div className="w-full md:w-1/3 md:max-w-sm lg:w-1/4 lg:max-w-md border-r flex flex-col">
       <div className="p-2 sm:p-4 border-b flex justify-between items-center">
@@ -430,13 +492,14 @@ export function Sidebar({ conversations, allUsers, messages, loggedInUser, selec
               </Tooltip>
             </TooltipProvider>
           )}
+           <NewChatDialog users={otherUsers.filter(u => !conversations.some(c => c.id === u.id))} onSelectUser={handleSelectNewUser} />
         </div>
       </div>
        <div className="p-2 sm:p-4 border-b">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
           <Input 
-            placeholder="Search or start new chat" 
+            placeholder="Search conversations..." 
             className="pl-10" 
             value={searchTerm}
             onChange={(e) => onSearchTermChange(e.target.value)}
@@ -445,9 +508,6 @@ export function Sidebar({ conversations, allUsers, messages, loggedInUser, selec
       </div>
       <ScrollArea className="flex-1">
         <div className="p-2">
-          {searchTerm && filteredConversations.length > 0 && (
-            <p className="px-3 py-2 text-xs font-semibold text-muted-foreground">Conversations</p>
-          )}
           {filteredConversations.length > 0 ? filteredConversations.map(({ user, lastMessage, unreadCount }) => (
             <ConversationItem
               key={user.id}
@@ -458,27 +518,9 @@ export function Sidebar({ conversations, allUsers, messages, loggedInUser, selec
               onSelectUser={onSelectUser}
               onClearHistory={onClearHistory}
             />
-          )) : !searchTerm && (
+          )) : (
             <div className="text-center text-muted-foreground py-10">
-              No active conversations.
-            </div>
-          )}
-
-          {searchTerm && filteredNewUsers.length > 0 && (
-            <p className="px-3 py-2 text-xs font-semibold text-muted-foreground">New Contacts</p>
-          )}
-          {filteredNewUsers.map(user => (
-              <ConversationItem
-                key={user.id}
-                user={user}
-                selectedUser={selectedUser}
-                onSelectUser={handleSelectNewUser}
-              />
-          ))}
-
-          {searchTerm && filteredConversations.length === 0 && filteredNewUsers.length === 0 && (
-             <div className="text-center text-muted-foreground py-10">
-              No users or conversations found.
+              {searchTerm ? 'No conversations found.' : 'No active conversations.'}
             </div>
           )}
         </div>
