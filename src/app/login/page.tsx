@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { Separator } from '@/components/ui/separator';
 import { Logo } from '@/components/logo';
 
@@ -95,6 +95,24 @@ export default function LoginPage() {
             isOnline: true,
             lastSeen: serverTimestamp(),
           });
+      } else {
+        // User exists, check if name or photoURL need updating
+        const userData = userDoc.data();
+        const updates: { displayName?: string; photoURL?: string, isOnline: boolean, lastSeen: any } = {
+            isOnline: true,
+            lastSeen: serverTimestamp(),
+        };
+        if (userData.displayName !== user.displayName) {
+            updates.displayName = user.displayName!;
+        }
+        if (userData.photoURL !== user.photoURL) {
+            updates.photoURL = user.photoURL!;
+        }
+        if (Object.keys(updates).length > 2) { // only update if name or photo changed
+            await updateDoc(userDocRef, updates);
+        } else {
+             await updateDoc(userDocRef, { isOnline: true, lastSeen: serverTimestamp() });
+        }
       }
 
       router.push('/');
