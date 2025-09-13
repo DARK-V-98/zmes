@@ -17,7 +17,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from './ui/dialog';
-import { usePWAInstall } from './pwa-install-provider';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from './ui/tooltip';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { auth, db } from '@/lib/firebase';
@@ -55,23 +54,6 @@ interface SidebarProps {
   messages: Message[];
   allUsers: User[];
 }
-
-const IOSInstallInstructions = ({ open, onOpenChange }: { open: boolean, onOpenChange: (open: boolean) => void }) => (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent>
-            <DialogHeader>
-                <DialogTitle>Install App on your Device</DialogTitle>
-                <DialogDescription>
-                    To install the app, tap the Share button in your browser and then "Add to Home Screen".
-                </DialogDescription>
-            </DialogHeader>
-            <div className="py-4 text-center">
-                <p>1. Tap the <Share className="inline-block h-5 w-5 mx-1" /> icon in the menu bar.</p>
-                <p className="mt-4">2. Scroll down and tap on "Add to Home Screen".</p>
-            </div>
-        </DialogContent>
-    </Dialog>
-);
 
 const ThemeChanger = () => {
   const { setTheme } = useTheme();
@@ -134,7 +116,7 @@ const UserMenu = ({ user }: { user: User }) => {
                     <Button variant="ghost" className="w-full h-auto justify-start items-center p-2 sm:p-3 text-left rounded-lg">
                         <Avatar className="h-10 w-10 mr-4 relative">
                           <AvatarImage src={user.avatar} alt={user.name} />
-                          <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                          <AvatarFallback>{user.name ? user.name.charAt(0) : '?'}</AvatarFallback>
                         </Avatar>
                         <div className="flex-1 overflow-hidden">
                             <p className="font-semibold truncate">{user.name}</p>
@@ -229,7 +211,7 @@ const NewChatDialog = ({ loggedInUser, onSelectUser, allUsers }: { loggedInUser:
       if (showAll) {
           const filtered = allUsersList.filter(user => 
               user.name.toLowerCase().includes(search.toLowerCase()) || 
-              user.email?.toLowerCase().includes(search.toLowerCase())
+              (user.email && user.email.toLowerCase().includes(search.toLowerCase()))
           );
           setSearchResults(filtered);
       }
@@ -278,7 +260,7 @@ const NewChatDialog = ({ loggedInUser, onSelectUser, allUsers }: { loggedInUser:
                   <div className="flex items-center gap-3">
                     <Avatar className="h-10 w-10">
                       <AvatarImage src={user.avatar} alt={user.name} />
-                      <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                      <AvatarFallback>{user.name ? user.name.charAt(0) : '?'}</AvatarFallback>
                     </Avatar>
                     <div className='flex flex-col'>
                       <p className="font-semibold">{user.name}</p>
@@ -343,7 +325,7 @@ const ConversationItem = ({
           >
             <Avatar className="h-10 w-10 sm:h-12 sm:w-12 mr-4 relative">
               <AvatarImage src={user.avatar} alt={user.name} data-ai-hint="profile picture" />
-              <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+              <AvatarFallback>{user.name ? user.name.charAt(0) : '?'}</AvatarFallback>
               {user.isOnline && (
                 <div className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-accent ring-2 ring-background"></div>
               )}
@@ -389,22 +371,7 @@ const ConversationItem = ({
 
 export function Sidebar({ conversations, loggedInUser, selectedUser, onSelectUser, onClearHistory, messages, allUsers }: SidebarProps) {
   const [searchTerm, setSearchTerm] = useState('');
-  const { canInstall, install } = usePWAInstall();
-  const [isInstallSheetOpen, setIsInstallSheetOpen] = useState(false);
   
-  const isIos = () => /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
-  const isMobileDevice = () => /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-
-  const showInstallButton = canInstall || isMobileDevice();
-
-  const handleInstallClick = () => {
-    if (canInstall) {
-        install();
-    } else if (isIos() || isMobileDevice()) {
-        setIsInstallSheetOpen(true);
-    }
-  };
-
   const conversationDetails = conversations.map(user => {
     const userMessages = messages
       .filter(m => !m.deletedFor?.includes(loggedInUser.id) && ((m.senderId === user.id && m.receiverId === loggedInUser.id) || (m.senderId === loggedInUser.id && m.receiverId === user.id)))
@@ -434,18 +401,18 @@ export function Sidebar({ conversations, loggedInUser, selectedUser, onSelectUse
             <span className="font-semibold text-lg">Z Messenger</span>
         </div>
         <div className="flex items-center gap-1">
-          {showInstallButton && (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" className="rounded-full" onClick={handleInstallClick}>
-                    <Download />
-                  </Button>
+                  <a href="/app.apk" download>
+                    <Button variant="ghost" size="icon" className="rounded-full">
+                      <Download />
+                    </Button>
+                  </a>
                 </TooltipTrigger>
-                <TooltipContent>Install App</TooltipContent>
+                <TooltipContent>Download App</TooltipContent>
               </Tooltip>
             </TooltipProvider>
-          )}
         </div>
       </div>
        <div className="p-2 sm:p-4 border-b">
@@ -482,7 +449,6 @@ export function Sidebar({ conversations, loggedInUser, selectedUser, onSelectUse
         <NewChatDialog loggedInUser={loggedInUser} onSelectUser={onSelectUser} allUsers={allUsers} />
         <UserMenu user={loggedInUser} />
       </div>
-      <IOSInstallInstructions open={isInstallSheetOpen} onOpenChange={setIsInstallSheetOpen} />
     </div>
   );
 }
