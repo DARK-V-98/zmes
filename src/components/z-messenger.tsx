@@ -43,6 +43,7 @@ export function ZMessenger() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [conversations, setConversations] = useState<User[]>([]);
   const isMobile = useMediaQuery('(max-width: 768px)');
   const [isTyping, setIsTyping] = useState(false);
   const { user: authUser } = useAuth();
@@ -166,8 +167,12 @@ export function ZMessenger() {
   }, [loggedInUser?.id]);
 
 
-  const conversations = useMemo(() => {
-    if (!loggedInUser?.id) return [];
+  // Derive conversation list from messages and users
+  useEffect(() => {
+    if (!loggedInUser?.id) {
+        setConversations([]);
+        return;
+    };
     const userIdsInConversations = new Set<string>();
     messages.forEach(message => {
         if (!message.deletedFor?.includes(loggedInUser.id)) {
@@ -176,19 +181,27 @@ export function ZMessenger() {
         }
     });
 
+    const currentConversationIds = new Set(conversations.map(c => c.id));
+    userIdsInConversations.forEach(id => currentConversationIds.add(id));
+
     const allOtherUsers = allUsers.filter(user => user.id !== loggedInUser.id);
-    const conversationUsers = allOtherUsers.filter(user => userIdsInConversations.has(user.id));
+    const conversationUsers = allOtherUsers.filter(user => currentConversationIds.has(user.id));
     
-    return conversationUsers;
+    setConversations(conversationUsers);
 
   }, [messages, allUsers, loggedInUser?.id]);
 
   // Set initial user on desktop
   useEffect(() => {
     if (!isMobile && !selectedUser && conversations.length > 0) {
-        setSelectedUser(conversations[0]);
+        const lastConversation = conversations.sort((a, b) => {
+            const lastMsgA = messages.filter(m => m.participants.includes(a.id)).pop()?.timestamp.getTime() || 0;
+            const lastMsgB = messages.filter(m => m.participants.includes(b.id)).pop()?.timestamp.getTime() || 0;
+            return lastMsgB - lastMsgA;
+        })[0];
+        setSelectedUser(lastConversation);
     }
-  }, [conversations, isMobile, selectedUser]);
+  }, [conversations, isMobile, selectedUser, messages]);
 
 
   // Mark messages as read
@@ -346,7 +359,7 @@ export function ZMessenger() {
         toast({
             variant: 'destructive',
             title: 'Upload failed',
-            description: 'There was a problem uploading your file. Please check permissions.',
+            description: 'There was a problem uploading your file. Please try again.',
         });
     }
   };
@@ -425,10 +438,16 @@ export function ZMessenger() {
     }
   };
   
-  const handleSelectUser = (user: User) => {
+  const handleSelectUser = (user: User, isNew: boolean = false) => {
+    if (isNew) {
+      // If user is not already in conversations, add them.
+      if (!conversations.some(c => c.id === user.id)) {
+        setConversations(prev => [...prev, user]);
+      }
+    }
     setSelectedUser(user);
     setSelectedMessages([]); // Clear selection when switching chats
-  }
+  };
   
   const currentChatMessages = useMemo(() => {
     if (!selectedUser || !loggedInUser) return [];

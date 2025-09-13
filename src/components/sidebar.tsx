@@ -49,7 +49,7 @@ interface SidebarProps {
   conversations: User[];
   loggedInUser: User;
   selectedUser: User | null;
-  onSelectUser: (user: User) => void;
+  onSelectUser: (user: User, isNew?: boolean) => void;
   onClearHistory: (userId: string) => void;
   messages: Message[];
   allUsers: User[];
@@ -164,7 +164,7 @@ const UserMenu = ({ user }: { user: User }) => {
     );
 };
 
-const NewChatDialog = ({ loggedInUser, onSelectUser, usersForNewChat }: { loggedInUser: User, onSelectUser: (user: User) => void, usersForNewChat: User[] }) => {
+const NewChatDialog = ({ loggedInUser, onSelectUser }: { loggedInUser: User, onSelectUser: (user: User, isNew?: boolean) => void }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [searchResults, setSearchResults] = useState<User[]>([]);
@@ -176,14 +176,12 @@ const NewChatDialog = ({ loggedInUser, onSelectUser, usersForNewChat }: { logged
     setLoading(true);
     setSearched(true);
     const results = await searchUsers(search, loggedInUser.id);
-    // Filter out users already in conversation
-    const finalResults = results.filter(u => !usersForNewChat.some(existing => existing.id === u.id));
-    setSearchResults(finalResults);
+    setSearchResults(results);
     setLoading(false);
   };
 
   const handleSelect = (user: User) => {
-    onSelectUser(user);
+    onSelectUser(user, true);
     setIsOpen(false);
   }
   
@@ -366,22 +364,17 @@ export function Sidebar({ conversations, loggedInUser, selectedUser, onSelectUse
 
     return {
       user,
-      lastMessage: lastMessage?.fileURL ? (lastMessage.fileType?.startsWith('image') ? '📷 Image' : '📎 Attachment') : lastMessage?.content ?? 'No messages yet',
+      lastMessage: lastMessage?.fileURL ? (lastMessage.fileType?.startsWith('image') ? '📷 Image' : (lastMessage.fileType?.startsWith('video') ? '📹 Video' : '📎 Attachment')) : lastMessage?.content ?? 'No messages yet',
       lastMessageTimestamp: lastMessage ? lastMessage.timestamp : new Date(0),
       unreadCount,
     };
   }).sort((a,b) => b.lastMessageTimestamp.getTime() - a.lastMessageTimestamp.getTime());
   
-  const handleSelectNewUser = (user: User) => {
-    onSelectUser(user);
-  };
   
   const filteredConversations = searchTerm ? conversationDetails.filter(({ user }) => 
     user.name.toLowerCase().includes(searchTerm.toLowerCase())
   ) : conversationDetails;
   
-  const usersForNewChat = allUsers ? allUsers.filter(u => u.id !== loggedInUser.id && !conversations.some(c => c.id === u.id)) : [];
-
   return (
     <div className="w-full md:w-1/3 md:max-w-sm lg:w-1/4 lg:max-w-md border-r flex flex-col">
       <div className="p-2 sm:p-4 border-b flex justify-between items-center">
@@ -402,7 +395,7 @@ export function Sidebar({ conversations, loggedInUser, selectedUser, onSelectUse
               </Tooltip>
             </TooltipProvider>
           )}
-           <NewChatDialog loggedInUser={loggedInUser} onSelectUser={handleSelectNewUser} usersForNewChat={usersForNewChat} />
+           <NewChatDialog loggedInUser={loggedInUser} onSelectUser={onSelectUser} />
         </div>
       </div>
        <div className="p-2 sm:p-4 border-b">
