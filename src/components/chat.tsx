@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Check, CheckCheck, MoreVertical, Paperclip, Send, SmilePlus, ArrowLeft, Trash2, Phone, Edit, X, Smile } from 'lucide-react';
+import { Check, CheckCheck, MoreVertical, Paperclip, Send, SmilePlus, ArrowLeft, Trash2, Phone, Edit, X, Smile, File, Download } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import {
@@ -31,6 +31,8 @@ import {
 import { AlertDialogTrigger } from '@radix-ui/react-alert-dialog';
 import { Mood, useMood } from './mood-provider';
 import { THEME_MAP } from './theme-provider';
+import { useToast } from '@/hooks/use-toast';
+import Image from 'next/image';
 
 const MoodChanger = ({ onSetMood }: { onSetMood: (mood: Mood) => void }) => {
   const moods: { mood: Mood; emoji: string }[] = [
@@ -208,6 +210,8 @@ const ChatMessage = ({
         onDelete(message.id);
         setIsAlertOpen(false);
     }
+    
+    const isImage = message.fileType?.startsWith('image/');
 
     return (
       <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
@@ -230,7 +234,20 @@ const ChatMessage = ({
                   isSender ? 'bg-primary text-primary-foreground rounded-br-none' : 'bg-card border rounded-bl-none',
                   message.isDeleted && 'italic text-muted-foreground'
                 )}>
-                  <p className="break-words overflow-wrap-anywhere text-sm sm:text-base">{message.content}</p>
+                  {message.fileURL ? (
+                    isImage ? (
+                        <Image src={message.fileURL} alt={message.fileName || 'Uploaded image'} width={200} height={200} className="rounded-lg max-w-xs" />
+                    ) : (
+                       <a href={message.fileURL} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-2 rounded-lg bg-background/50 hover:bg-background">
+                            <File className="h-6 w-6" />
+                            <div className="flex flex-col">
+                                <span className="font-semibold">{message.fileName}</span>
+                                <span className="text-xs">Click to download</span>
+                            </div>
+                       </a>
+                    )
+                  ) : <p className="break-words overflow-wrap-anywhere text-sm sm:text-base">{message.content}</p>
+                 }
                   {message.reactions && message.reactions.length > 0 && (
                     <div className="absolute -bottom-3 right-2 bg-card border rounded-full px-1.5 py-0.5 text-xs">
                       {message.reactions[0].emoji} {message.reactions.length}
@@ -254,7 +271,7 @@ const ChatMessage = ({
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
-                        <DropdownMenuItem onClick={() => onEdit(message)}>
+                        <DropdownMenuItem onClick={() => onEdit(message)} disabled={!!message.fileURL}>
                             <Edit className="mr-2 h-4 w-4" />
                             <span>Edit</span>
                         </DropdownMenuItem>
@@ -355,16 +372,19 @@ export const ChatMessages = ({ messages, loggedInUser, allUsers, isTyping, onUpd
 };
 
 
-export const ChatInput = ({ onSendMessage, onUpdateMessage, onTyping, editingMessage, onCancelEdit }: { 
+export const ChatInput = ({ onSendMessage, onUpdateMessage, onTyping, editingMessage, onCancelEdit, onSendFile }: { 
     onSendMessage: (content: string) => void;
     onUpdateMessage: (messageId: string, newContent: string) => void;
     onTyping: (isTyping: boolean) => void;
     editingMessage: Message | null;
     onCancelEdit: () => void;
+    onSendFile: (file: File) => void;
 }) => {
   const [message, setMessage] = useState('');
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
       if (editingMessage) {
@@ -407,6 +427,25 @@ export const ChatInput = ({ onSendMessage, onUpdateMessage, onTyping, editingMes
       setMessage('');
     }
   };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+        if (file.size > 20 * 1024 * 1024) { // 20MB limit
+            toast({
+                variant: 'destructive',
+                title: 'File too large',
+                description: 'Please select a file smaller than 20MB.',
+            });
+            return;
+        }
+        onSendFile(file);
+    }
+    // Reset file input
+    if(event.target) {
+        event.target.value = '';
+    }
+  };
   
   return (
     <div className="p-2 sm:p-4 border-t bg-card">
@@ -431,10 +470,11 @@ export const ChatInput = ({ onSendMessage, onUpdateMessage, onTyping, editingMes
           className="pr-16 sm:pr-20 h-10 sm:h-11 rounded-full"
         />
         <div className="absolute top-1/2 right-2 -translate-y-1/2 flex items-center gap-1">
+            <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
             <TooltipProvider>
                 <Tooltip>
                     <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="rounded-full h-7 w-7 sm:h-8 sm:w-8">
+                    <Button variant="ghost" size="icon" className="rounded-full h-7 w-7 sm:h-8 sm:w-8" onClick={() => fileInputRef.current?.click()}>
                         <Paperclip className="h-4 w-4 sm:h-5 sm:w-5"/>
                     </Button>
                     </TooltipTrigger>

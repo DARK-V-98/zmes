@@ -18,4 +18,7 @@ export type Message = {
   deletedFor?: string[];
   participants: string[];
   isDeleted?: boolean;
+  fileURL?: string;
+  fileName?: string;
+  fileType?: string;
 };

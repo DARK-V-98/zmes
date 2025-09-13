@@ -30,8 +30,9 @@ import { useMediaQuery } from '@/hooks/use-media-query';
 import { useAuth } from './auth-provider';
 import { CallView, type Call } from './call-view';
 import { hangUp, answerCall, startCall } from '@/lib/webrtc';
-import { updateMessage, deleteMessage } from '@/app/actions';
+import { updateMessage, deleteMessage, uploadChatFile } from '@/app/actions';
 import type { Mood } from './mood-provider';
+import { useToast } from '@/hooks/use-toast';
 
 const getConversationId = (userId1: string, userId2: string) => {
   return [userId1, userId2].sort().join('_');
@@ -58,6 +59,7 @@ export function ZMessenger() {
   
   const [localStreamState, setLocalStreamState] = useState<MediaStream | null>(null);
   const [remoteStreamState, setRemoteStreamState] = useState<MediaStream | null>(null);
+  const { toast } = useToast();
 
   // Derive loggedInUser from authUser and allUsers list
    useEffect(() => {
@@ -292,6 +294,47 @@ export function ZMessenger() {
     });
   };
 
+  const handleSendFile = async (file: File) => {
+    if (!selectedUser || !loggedInUser) return;
+
+    toast({
+        title: 'Uploading file...',
+        description: 'Please wait while your file is being uploaded.',
+    });
+
+    try {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = async () => {
+            const fileDataUri = reader.result as string;
+            const conversationId = getConversationId(loggedInUser.id, selectedUser.id);
+            const downloadURL = await uploadChatFile(conversationId, fileDataUri, file.name);
+
+            await addDoc(collection(db, 'messages'), {
+                conversationId,
+                senderId: loggedInUser.id,
+                receiverId: selectedUser.id,
+                participants: [loggedInUser.id, selectedUser.id],
+                content: '',
+                fileURL: downloadURL,
+                fileName: file.name,
+                fileType: file.type,
+                timestamp: serverTimestamp(),
+                read: false,
+                reactions: [],
+                deletedFor: [],
+            });
+        };
+    } catch (error) {
+        console.error("Error sending file:", error);
+        toast({
+            variant: 'destructive',
+            title: 'Upload failed',
+            description: 'There was a problem uploading your file.',
+        });
+    }
+  };
+
   const handleUpdateReaction = async (messageId: string, emoji: string) => {
     if (!loggedInUser) return;
     const messageRef = doc(db, 'messages', messageId);
@@ -514,6 +557,7 @@ export function ZMessenger() {
                     onTyping={handleTyping} 
                     editingMessage={editingMessage}
                     onCancelEdit={handleCancelEdit}
+                    onSendFile={handleSendFile}
                 />
               </>
             ) : (

@@ -6,7 +6,7 @@ import type { User } from '@/lib/data';
 import { Card, CardContent } from './ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Button } from './ui/button';
-import { Mic, MicOff, Phone, PhoneOff } from 'lucide-react';
+import { Mic, MicOff, Phone, PhoneOff, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export interface Call {
@@ -108,7 +108,11 @@ const ActiveCall = ({ call, onEnd, localStream, remoteStream }: { call: Call; on
                         <p className="text-xl sm:text-2xl font-bold">{otherUser.name}</p>
                         <p className="text-muted-foreground">{call.status === 'ringing' ? 'Ringing...' : formatDuration(duration)}</p>
                     </div>
-                    <div className="flex items-center justify-center gap-4 mt-4">
+                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Lock className="h-3 w-3" />
+                        <span>End-to-end encrypted</span>
+                    </div>
+                    <div className="flex items-center justify-center gap-4 mt-2">
                         <Button
                             variant="outline"
                             size="icon"
