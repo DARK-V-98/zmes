@@ -44,7 +44,7 @@ export default function ProfilePage() {
                 const data = docSnap.data();
                 setUser({
                     id: docSnap.id,
-                    name: data.displayName,
+                    name: data.displayName || 'No Name',
                     avatar: data.photoURL,
                     email: data.email,
                     isOnline: data.isOnline,
@@ -87,6 +87,7 @@ export default function ProfilePage() {
     }
     
     const isOwner = authUser?.uid === userId;
+    const userName = user.name || "No Name";
 
     return (
         <div className="min-h-screen bg-secondary/50 p-4 sm:p-6 lg:p-8">
@@ -114,8 +115,8 @@ export default function ProfilePage() {
                         )}
                          <div className="absolute -bottom-16 left-6 sm:left-10">
                             <Avatar className="h-32 w-32 border-4 border-background ring-4 ring-primary">
-                                <AvatarImage src={user.avatar} alt={user.name} />
-                                <AvatarFallback className="text-4xl">{user.name.charAt(0)}</AvatarFallback>
+                                <AvatarImage src={user.avatar} alt={userName} />
+                                <AvatarFallback className="text-4xl">{userName.charAt(0)}</AvatarFallback>
                             </Avatar>
                         </div>
                     </div>
@@ -123,7 +124,7 @@ export default function ProfilePage() {
                     <div className="pt-20 pb-8 px-6 text-left">
                         <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
                             <div>
-                                <h1 className="text-3xl font-bold">{user.name}</h1>
+                                <h1 className="text-3xl font-bold">{userName}</h1>
                                 <div className="flex items-center gap-2 mt-2">
                                     <span className={cn("h-3 w-3 rounded-full", user.isOnline ? "bg-accent" : "bg-gray-400")}></span>
                                     <p className="text-muted-foreground">{user.isOnline ? 'Online' : 'Offline'}</p>

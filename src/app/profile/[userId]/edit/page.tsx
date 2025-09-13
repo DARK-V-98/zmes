@@ -64,7 +64,7 @@ export default function EditProfilePage() {
                 const data = docSnap.data();
                 const fetchedUser: User = {
                     id: docSnap.id,
-                    name: data.displayName,
+                    name: data.displayName || 'No Name',
                     avatar: data.photoURL,
                     email: data.email,
                     coverPhotoURL: data.coverPhotoURL,
@@ -179,6 +179,8 @@ export default function EditProfilePage() {
             </div>
         );
     }
+    
+    const userName = name || "";
 
     return (
         <div className="min-h-screen bg-secondary/50 p-4 sm:p-6 lg:p-8">
@@ -219,7 +221,7 @@ export default function EditProfilePage() {
                                  <div className="relative">
                                     <Avatar className="h-24 w-24">
                                         <AvatarImage src={profileImagePreview || undefined} />
-                                        <AvatarFallback>{name.charAt(0)}</AvatarFallback>
+                                        <AvatarFallback>{userName.charAt(0)}</AvatarFallback>
                                     </Avatar>
                                      <Button
                                         type="button"
