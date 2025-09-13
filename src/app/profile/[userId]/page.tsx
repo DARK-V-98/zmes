@@ -16,6 +16,14 @@ import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { useChatSelection } from '@/components/chat-selection-provider';
 
+// This function is required for static exports with dynamic routes.
+// We return an empty array because we don't want to pre-render any profiles at build time.
+// Profiles will be rendered dynamically on the client side.
+export async function generateStaticParams() {
+  return [];
+}
+
+
 const SocialIcon = ({ type }: { type: string }) => {
     switch (type) {
         case 'facebook': return <Facebook className="h-5 w-5" />;
@@ -170,3 +178,5 @@ export default function ProfilePage() {
         </div>
     );
 }
+
+    
