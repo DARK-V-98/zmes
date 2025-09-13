@@ -6,6 +6,7 @@ import { AuthProvider } from '@/components/auth-provider';
 import { PWAInstallProvider } from '@/components/pwa-install-provider';
 import { MoodProvider } from '@/components/mood-provider';
 import { ThemeProvider } from '@/components/theme-provider';
+import { ChatSelectionProvider } from '@/components/chat-selection-provider';
 
 export const metadata: Metadata = {
   title: 'Z Messenger',
@@ -48,7 +49,9 @@ export default function RootLayout({
               enableSystem
             >
               <MoodProvider>
-                {children}
+                <ChatSelectionProvider>
+                  {children}
+                </ChatSelectionProvider>
                 <Toaster />
               </MoodProvider>
             </ThemeProvider>

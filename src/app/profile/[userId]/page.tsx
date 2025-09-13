@@ -3,17 +3,18 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { doc, getDoc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { User } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Edit, Facebook, Instagram, Link as LinkIcon, Mail, Phone, Twitter } from 'lucide-react';
+import { ArrowLeft, Edit, Facebook, Instagram, Link as LinkIcon, Mail, MessageSquare, Phone, Twitter } from 'lucide-react';
 import { useAuth } from '@/components/auth-provider';
 import { Card } from '@/components/ui/card';
 import Image from 'next/image';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { useChatSelection } from '@/components/chat-selection-provider';
 
 const SocialIcon = ({ type }: { type: string }) => {
     switch (type) {
@@ -32,6 +33,7 @@ export default function ProfilePage() {
     const [loading, setLoading] = useState(true);
     const router = useRouter();
     const { user: authUser } = useAuth();
+    const { selectUser } = useChatSelection();
 
     useEffect(() => {
         if (!userId) return;
@@ -60,6 +62,13 @@ export default function ProfilePage() {
         return () => unsubscribe();
     }, [userId]);
 
+    const handleStartChat = () => {
+        if (user) {
+            selectUser(user);
+            router.push('/');
+        }
+    };
+
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-screen bg-background">
@@ -80,8 +89,8 @@ export default function ProfilePage() {
     const isOwner = authUser?.uid === userId;
 
     return (
-        <div className="min-h-screen bg-secondary/50">
-            <div className="absolute top-4 left-4 z-10">
+        <div className="min-h-screen bg-secondary/50 p-4 sm:p-6 lg:p-8">
+             <div className="absolute top-4 left-4 z-10">
                 <Button variant="outline" size="icon" onClick={() => router.back()}>
                     <ArrowLeft />
                 </Button>
@@ -103,7 +112,7 @@ export default function ProfilePage() {
                         ) : (
                             <div className="h-full bg-gradient-to-r from-primary/20 to-accent/20"></div>
                         )}
-                        <div className="absolute -bottom-16 left-1/2 -translate-x-1/2">
+                         <div className="absolute -bottom-16 left-6 sm:left-10">
                             <Avatar className="h-32 w-32 border-4 border-background ring-4 ring-primary">
                                 <AvatarImage src={user.avatar} alt={user.name} />
                                 <AvatarFallback className="text-4xl">{user.name.charAt(0)}</AvatarFallback>
@@ -111,11 +120,20 @@ export default function ProfilePage() {
                         </div>
                     </div>
                     
-                    <div className="pt-20 pb-8 px-6 text-center">
-                        <h1 className="text-3xl font-bold">{user.name}</h1>
-                        <div className="flex items-center justify-center gap-2 mt-2">
-                             <span className={cn("h-3 w-3 rounded-full", user.isOnline ? "bg-accent" : "bg-gray-400")}></span>
-                             <p className="text-muted-foreground">{user.isOnline ? 'Online' : 'Offline'}</p>
+                    <div className="pt-20 pb-8 px-6 text-left">
+                        <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+                            <div>
+                                <h1 className="text-3xl font-bold">{user.name}</h1>
+                                <div className="flex items-center gap-2 mt-2">
+                                    <span className={cn("h-3 w-3 rounded-full", user.isOnline ? "bg-accent" : "bg-gray-400")}></span>
+                                    <p className="text-muted-foreground">{user.isOnline ? 'Online' : 'Offline'}</p>
+                                </div>
+                            </div>
+                            {!isOwner && (
+                                <Button onClick={handleStartChat}>
+                                    <MessageSquare className="mr-2 h-4 w-4" /> Start Chat
+                                </Button>
+                            )}
                         </div>
                     </div>
 

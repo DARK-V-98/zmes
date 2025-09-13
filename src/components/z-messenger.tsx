@@ -34,6 +34,7 @@ import { hangUp, answerCall, startCall } from '@/lib/webrtc';
 import { updateMessage, deleteMessage } from '@/app/actions';
 import type { Mood } from './mood-provider';
 import { useToast } from '@/hooks/use-toast';
+import { useChatSelection } from './chat-selection-provider';
 
 const getConversationId = (userId1: string, userId2: string) => {
   return [userId1, userId2].sort().join('_');
@@ -54,6 +55,7 @@ export function ZMessenger() {
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
   const [conversationMood, setConversationMood] = useState<Mood>('happy');
   const [selectedMessages, setSelectedMessages] = useState<string[]>([]);
+  const { selectedUser: globallySelectedUser, selectUser: setGloballySelectedUser } = useChatSelection();
 
 
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
@@ -63,6 +65,15 @@ export function ZMessenger() {
   const [localStreamState, setLocalStreamState] = useState<MediaStream | null>(null);
   const [remoteStreamState, setRemoteStreamState] = useState<MediaStream | null>(null);
   const { toast } = useToast();
+
+  // Handle globally selected user from profile page
+  useEffect(() => {
+    if (globallySelectedUser) {
+      handleSelectUser(globallySelectedUser, true);
+      // Reset global state after handling
+      setGloballySelectedUser(null);
+    }
+  }, [globallySelectedUser, setGloballySelectedUser]);
 
   // Derive loggedInUser from authUser and allUsers list
    useEffect(() => {
@@ -77,6 +88,7 @@ export function ZMessenger() {
           id: authUser.uid,
           name: authUser.displayName || 'You',
           avatar: authUser.photoURL || `https://picsum.photos/seed/${authUser.uid}/200/200`,
+          email: authUser.email || '',
           isOnline: true,
         });
       }
@@ -121,6 +133,7 @@ export function ZMessenger() {
           id: doc.id,
           name: data.displayName || 'No Name',
           avatar: data.photoURL || `https://picsum.photos/seed/${doc.id}/200/200`,
+          email: data.email,
           isOnline: data.isOnline,
         });
       });

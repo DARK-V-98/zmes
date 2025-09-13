@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { ScrollArea } from './ui/scroll-area';
-import { Search, Download, Settings, Camera, LogOut, User as UserIcon, Smile, Trash2, Share, MessageSquarePlus, Moon, Sun, Palette } from 'lucide-react';
+import { Search, Download, Settings, Camera, LogOut, User as UserIcon, Smile, Trash2, Share, MessageSquarePlus, Moon, Sun, Palette, UserSearch } from 'lucide-react';
 import { Input } from './ui/input';
 import {
   Dialog,
@@ -211,9 +211,9 @@ const NewChatDialog = ({ loggedInUser, onSelectUser }: { loggedInUser: User, onS
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Start a new chat</DialogTitle>
+          <DialogTitle>Find Users</DialogTitle>
           <DialogDescription>
-            Search for a user by their full name or email to start a conversation.
+            Search for a user by their full name or email to view their profile or start a conversation.
           </DialogDescription>
         </DialogHeader>
         <div className="py-2 flex gap-2">
@@ -239,9 +239,19 @@ const NewChatDialog = ({ loggedInUser, onSelectUser }: { loggedInUser: User, onS
                       <AvatarImage src={user.avatar} alt={user.name} />
                       <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
                     </Avatar>
-                    <p className="font-semibold">{user.name}</p>
+                    <div className='flex flex-col'>
+                      <p className="font-semibold">{user.name}</p>
+                      <p className="text-xs text-muted-foreground">{user.email}</p>
+                    </div>
                   </div>
-                  <Button size="sm" onClick={() => handleSelect(user)}>Chat</Button>
+                  <div className='flex items-center gap-2'>
+                    <Button asChild variant="outline" size="icon">
+                      <Link href={`/profile/${user.id}`} onClick={() => setIsOpen(false)}>
+                        <UserSearch className="h-4 w-4"/>
+                      </Link>
+                    </Button>
+                    <Button size="sm" onClick={() => handleSelect(user)}>Chat</Button>
+                  </div>
                 </div>
               ))
             ) : searched ? (
