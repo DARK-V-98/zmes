@@ -90,6 +90,7 @@ export function ZMessenger() {
           avatar: authUser.photoURL || `https://picsum.photos/seed/${authUser.uid}/200/200`,
           email: authUser.email || '',
           isOnline: true,
+          role: 'user', // default role
         });
       }
     } else {
@@ -135,6 +136,7 @@ export function ZMessenger() {
           avatar: data.photoURL || `https://picsum.photos/seed/${doc.id}/200/200`,
           email: data.email,
           isOnline: data.isOnline,
+          role: data.role || 'user',
         });
       });
       setAllUsers(usersData);

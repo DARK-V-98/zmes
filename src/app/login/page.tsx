@@ -60,7 +60,8 @@ export default function LoginPage() {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
       const userDocRef = doc(db, 'users', user.uid);
-      await updateDoc(userDocRef, { isOnline: true, lastSeen: serverTimestamp() });
+      const role = user.email === 'tikfese@gmail.com' ? 'developer' : 'user';
+      await setDoc(userDocRef, { isOnline: true, lastSeen: serverTimestamp(), role }, { merge: true });
       router.push('/');
     } catch (error: any) {
       const errorMessage =
@@ -88,6 +89,7 @@ export default function LoginPage() {
 
       const userDocRef = doc(db, 'users', user.uid);
       const userDoc = await getDoc(userDocRef);
+      const role = user.email === 'tikfese@gmail.com' ? 'developer' : 'user';
 
       if (!userDoc.exists()) {
          await setDoc(userDocRef, {
@@ -97,14 +99,15 @@ export default function LoginPage() {
             photoURL: user.photoURL,
             isOnline: true,
             lastSeen: serverTimestamp(),
+            role: role,
           });
       } else {
-        // User exists, check if name or photoURL need updating
-        const userData = userDoc.data();
-        const updates: { displayName?: string; photoURL?: string, isOnline: boolean, lastSeen: any } = {
+        const updates: { [key: string]: any } = {
             isOnline: true,
             lastSeen: serverTimestamp(),
+            role: role,
         };
+        const userData = userDoc.data();
         if (userData.displayName !== user.displayName) {
             updates.displayName = user.displayName!;
         }

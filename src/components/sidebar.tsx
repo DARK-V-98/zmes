@@ -1,5 +1,5 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import type { Message, User } from '@/lib/data';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -20,7 +20,7 @@ import {
 import { usePWAInstall } from './pwa-install-provider';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from './ui/tooltip';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import { searchUsers } from '@/app/actions';
 import {
@@ -43,6 +43,7 @@ import {
 import { useTheme, type Theme } from './theme-provider';
 import { Logo } from './logo';
 import Link from 'next/link';
+import { collection, getDocs } from 'firebase/firestore';
 
 
 interface SidebarProps {
@@ -164,21 +165,49 @@ const UserMenu = ({ user }: { user: User }) => {
     );
 };
 
-const NewChatDialog = ({ loggedInUser, onSelectUser }: { loggedInUser: User, onSelectUser: (user: User, isNew?: boolean) => void }) => {
+const NewChatDialog = ({ loggedInUser, onSelectUser, allUsers }: { loggedInUser: User, onSelectUser: (user: User, isNew?: boolean) => void, allUsers: User[] }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [allUsersList, setAllUsersList] = useState<User[]>([]);
+  const [showAll, setShowAll] = useState(false);
 
   const handleSearch = async () => {
-    if (!search.trim()) return;
+    if (!search.trim()) {
+        if(showAll) setSearchResults(allUsersList);
+        return;
+    };
     setLoading(true);
     setSearched(true);
     const results = await searchUsers(search, loggedInUser.id);
     setSearchResults(results);
     setLoading(false);
   };
+  
+  const handleShowAllUsers = async () => {
+    setShowAll(true);
+    setLoading(true);
+    const usersRef = collection(db, 'users');
+    const querySnapshot = await getDocs(usersRef);
+    const users: User[] = [];
+    querySnapshot.forEach((doc) => {
+        if (doc.id !== loggedInUser.id) {
+            const data = doc.data();
+            users.push({
+                id: doc.id,
+                name: data.displayName,
+                avatar: data.photoURL,
+                email: data.email,
+                role: data.role,
+            });
+        }
+    });
+    setAllUsersList(users);
+    setSearchResults(users);
+    setLoading(false);
+  }
 
   const handleSelect = (user: User) => {
     onSelectUser(user, true);
@@ -192,8 +221,19 @@ const NewChatDialog = ({ loggedInUser, onSelectUser }: { loggedInUser: User, onS
       setSearchResults([]);
       setSearched(false);
       setLoading(false);
+      setShowAll(false);
     }
   }
+  
+  useEffect(() => {
+      if (showAll) {
+          const filtered = allUsersList.filter(user => 
+              user.name.toLowerCase().includes(search.toLowerCase()) || 
+              user.email?.toLowerCase().includes(search.toLowerCase())
+          );
+          setSearchResults(filtered);
+      }
+  }, [search, showAll, allUsersList]);
 
   return (
     <Dialog open={isOpen} onOpenChange={resetState}>
@@ -215,17 +255,24 @@ const NewChatDialog = ({ loggedInUser, onSelectUser }: { loggedInUser: User, onS
             placeholder="Search by name or email..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+            onKeyDown={(e) => e.key === 'Enter' && !showAll && handleSearch()}
           />
-          <Button onClick={handleSearch} disabled={loading}>
-            {loading ? '...' : <Search />}
-          </Button>
+           {!showAll && (
+                <Button onClick={handleSearch} disabled={loading}>
+                    {loading ? '...' : <Search />}
+                </Button>
+            )}
         </div>
+        {loggedInUser.role === 'developer' && !showAll && (
+            <Button variant="secondary" onClick={handleShowAllUsers}>
+                Show All Users
+            </Button>
+        )}
         <ScrollArea className="max-h-60">
           <div className="pr-4">
             {loading ? (
                 <p className="text-center text-sm text-muted-foreground py-4">Searching...</p>
-            ) : searched && searchResults.length > 0 ? (
+            ) : (searched || showAll) && searchResults.length > 0 ? (
               searchResults.map(user => (
                 <div key={user.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-secondary">
                   <div className="flex items-center gap-3">
@@ -248,7 +295,7 @@ const NewChatDialog = ({ loggedInUser, onSelectUser }: { loggedInUser: User, onS
                   </div>
                 </div>
               ))
-            ) : searched ? (
+            ) : (searched || showAll) ? (
               <p className="text-center text-sm text-muted-foreground py-4">No users found.</p>
             ) : null}
           </div>
@@ -432,7 +479,7 @@ export function Sidebar({ conversations, loggedInUser, selectedUser, onSelectUse
         </div>
       </ScrollArea>
        <div className="p-2 border-t space-y-2">
-        <NewChatDialog loggedInUser={loggedInUser} onSelectUser={onSelectUser} />
+        <NewChatDialog loggedInUser={loggedInUser} onSelectUser={onSelectUser} allUsers={allUsers} />
         <UserMenu user={loggedInUser} />
       </div>
       <IOSInstallInstructions open={isInstallSheetOpen} onOpenChange={setIsInstallSheetOpen} />

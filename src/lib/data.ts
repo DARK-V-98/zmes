@@ -7,6 +7,7 @@ export type User = {
   coverPhotoURL?: string;
   phoneNumber?: string;
   socialLinks?: { type: 'facebook' | 'instagram' | 'twitter' | 'website'; url: string }[];
+  role?: 'user' | 'developer';
 };
 
 export type Message = {

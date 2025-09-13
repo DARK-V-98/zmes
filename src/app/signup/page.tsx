@@ -64,6 +64,8 @@ export default function SignupPage() {
         displayName: name,
       });
       
+      const role = user.email === 'tikfese@gmail.com' ? 'developer' : 'user';
+
       await setDoc(doc(db, 'users', user.uid), {
         uid: user.uid,
         displayName: name,
@@ -71,6 +73,7 @@ export default function SignupPage() {
         photoURL: user.photoURL,
         isOnline: true,
         lastSeen: serverTimestamp(),
+        role: role,
       });
 
       router.push('/');
@@ -96,6 +99,7 @@ export default function SignupPage() {
 
       const userDocRef = doc(db, 'users', user.uid);
       const userDoc = await getDoc(userDocRef);
+      const role = user.email === 'tikfese@gmail.com' ? 'developer' : 'user';
 
       if (!userDoc.exists()) {
          await setDoc(userDocRef, {
@@ -105,6 +109,7 @@ export default function SignupPage() {
             photoURL: user.photoURL,
             isOnline: true,
             lastSeen: serverTimestamp(),
+            role: role,
           });
       }
       
