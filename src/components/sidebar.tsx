@@ -24,7 +24,7 @@ import { auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import { Label } from './ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { updateUserProfile } from '@/app/actions';
+import { updateUserProfile, searchUsers } from '@/app/actions';
 import { Mood } from './mood-provider';
 import {
   ContextMenu,
@@ -48,12 +48,11 @@ import { Logo } from './logo';
 
 interface SidebarProps {
   conversations: User[];
-  allUsers: User[];
-  messages: Message[];
   loggedInUser: User;
   selectedUser: User | null;
   onSelectUser: (user: User) => void;
   onClearHistory: (userId: string) => void;
+  messages: Message[];
 }
 
 const IOSInstallInstructions = ({ open, onOpenChange }: { open: boolean, onOpenChange: (open: boolean) => void }) => (
@@ -281,22 +280,47 @@ const UserMenu = ({ user }: { user: User }) => {
     );
 };
 
-const NewChatDialog = ({ users, onSelectUser }: { users: User[], onSelectUser: (user: User) => void }) => {
+const NewChatDialog = ({ loggedInUser, onSelectUser, existingConversationUsers }: { loggedInUser: User, onSelectUser: (user: User) => void, existingConversationUsers: User[] }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [searchResults, setSearchResults] = useState<User[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [searched, setSearched] = useState(false);
 
-  const filteredUsers = search
-    ? users.filter(user => user.name.toLowerCase().includes(search.toLowerCase()))
-    : [];
+  const handleSearch = async () => {
+    if (!search.trim()) return;
+    setLoading(true);
+    setSearched(true);
+    const results = await searchUsers(search, loggedInUser.id);
+    
+    // Filter out users who are already in an existing conversation
+    const existingIds = new Set(existingConversationUsers.map(u => u.id));
+    const finalResults = results.filter(u => !existingIds.has(u.id));
+
+    setSearchResults(finalResults);
+    setLoading(false);
+  };
 
   const handleSelect = (user: User) => {
     onSelectUser(user);
     setIsOpen(false);
     setSearch('');
+    setSearchResults([]);
+    setSearched(false);
+  }
+  
+  const resetState = (open: boolean) => {
+    if (!open) {
+      setSearch('');
+      setSearchResults([]);
+      setSearched(false);
+      setLoading(false);
+    }
+    setIsOpen(open);
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={resetState}>
       <DialogTrigger asChild>
         <TooltipProvider>
           <Tooltip>
@@ -313,20 +337,26 @@ const NewChatDialog = ({ users, onSelectUser }: { users: User[], onSelectUser: (
         <DialogHeader>
           <DialogTitle>Start a new chat</DialogTitle>
           <DialogDescription>
-            Search for a user by name to start a conversation.
+            Search for a user by their full name or email to start a conversation.
           </DialogDescription>
         </DialogHeader>
-        <div className="py-2">
+        <div className="py-2 flex gap-2">
           <Input 
-            placeholder="Search by name..."
+            placeholder="Search by name or email..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
           />
+          <Button onClick={handleSearch} disabled={loading}>
+            {loading ? '...' : <Search />}
+          </Button>
         </div>
         <ScrollArea className="max-h-60">
           <div className="pr-4">
-            {filteredUsers.length > 0 ? (
-              filteredUsers.map(user => (
+            {loading ? (
+                <p className="text-center text-sm text-muted-foreground py-4">Searching...</p>
+            ) : searched && searchResults.length > 0 ? (
+              searchResults.map(user => (
                 <div key={user.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-secondary">
                   <div className="flex items-center gap-3">
                     <Avatar className="h-10 w-10">
@@ -338,7 +368,7 @@ const NewChatDialog = ({ users, onSelectUser }: { users: User[], onSelectUser: (
                   <Button size="sm" onClick={() => handleSelect(user)}>Chat</Button>
                 </div>
               ))
-            ) : search ? (
+            ) : searched ? (
               <p className="text-center text-sm text-muted-foreground py-4">No users found.</p>
             ) : null}
           </div>
@@ -373,8 +403,7 @@ const ConversationItem = ({
   };
 
   return (
-    <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
-      <ContextMenu>
+     <ContextMenu>
         <ContextMenuTrigger>
           <Button
             variant="ghost"
@@ -405,32 +434,33 @@ const ConversationItem = ({
         {onClearHistory && (
           <ContextMenuContent>
             <ContextMenuItem onClick={() => onSelectUser(user)}>Open Chat</ContextMenuItem>
-            <AlertDialogTrigger asChild>
-              <ContextMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
-                <Trash2 className="mr-2 h-4 w-4" /> Delete Chat
-              </ContextMenuItem>
-            </AlertDialogTrigger>
+             <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
+                <AlertDialogTrigger asChild>
+                    <ContextMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
+                        <Trash2 className="mr-2 h-4 w-4" /> Delete Chat
+                    </ContextMenuItem>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        This will delete the chat history for you only. The other person will still see the messages. This action cannot be undone.
+                    </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDeleteChat}>Continue</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+             </AlertDialog>
           </ContextMenuContent>
         )}
       </ContextMenu>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-          <AlertDialogDescription>
-            This will delete the chat history for you only. The other person will still see the messages. This action cannot be undone.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={handleDeleteChat}>Continue</AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
   );
 };
 
 
-export function Sidebar({ conversations, allUsers, messages, loggedInUser, selectedUser, onSelectUser, onClearHistory }: SidebarProps) {
+export function Sidebar({ conversations, loggedInUser, selectedUser, onSelectUser, onClearHistory, messages }: SidebarProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const { canInstall, install } = usePWAInstall();
   const [isInstallSheetOpen, setIsInstallSheetOpen] = useState(false);
@@ -473,8 +503,6 @@ export function Sidebar({ conversations, allUsers, messages, loggedInUser, selec
     user.name.toLowerCase().includes(searchTerm.toLowerCase())
   ) : conversationDetails;
 
-  const usersForNewChat = allUsers.filter(u => !conversations.some(c => c.id === u.id));
-
   return (
     <div className="w-full md:w-1/3 md:max-w-sm lg:w-1/4 lg:max-w-md border-r flex flex-col">
       <div className="p-2 sm:p-4 border-b flex justify-between items-center">
@@ -495,7 +523,7 @@ export function Sidebar({ conversations, allUsers, messages, loggedInUser, selec
               </Tooltip>
             </TooltipProvider>
           )}
-           <NewChatDialog users={usersForNewChat} onSelectUser={handleSelectNewUser} />
+           <NewChatDialog loggedInUser={loggedInUser} onSelectUser={handleSelectNewUser} existingConversationUsers={conversations} />
         </div>
       </div>
        <div className="p-2 sm:p-4 border-b">

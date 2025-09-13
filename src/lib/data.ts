@@ -3,6 +3,7 @@ export type User = {
   avatar: string;
   name: string;
   isOnline?: boolean;
+  email?: string;
 };
 
 export type Message = {

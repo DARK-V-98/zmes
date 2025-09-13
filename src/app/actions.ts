@@ -1,8 +1,9 @@
 'use server';
 import { auth, db, storage } from '@/lib/firebase';
 import { updateProfile } from 'firebase/auth';
-import { doc, updateDoc, setDoc } from 'firebase/firestore';
+import { doc, updateDoc, setDoc, collection, query, where, getDocs, or } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadString } from 'firebase/storage';
+import type { User } from '@/lib/data';
 
 export async function updateUserProfile(userId: string, formData: FormData) {
   const name = formData.get('name') as string;
@@ -45,6 +46,45 @@ export async function updateUserProfile(userId: string, formData: FormData) {
     return { success: false, message: error.message };
   }
 }
+
+export async function searchUsers(searchTerm: string, currentUserId: string): Promise<User[]> {
+  if (!searchTerm.trim()) {
+    return [];
+  }
+
+  const usersRef = collection(db, 'users');
+  // Firestore doesn't support case-insensitive queries directly, 
+  // so we query for exact match for now. A more robust solution might involve
+  // storing a normalized (e.g., lowercase) version of the name and email.
+  const q = query(usersRef, 
+    or(
+      where('displayName', '==', searchTerm),
+      where('email', '==', searchTerm)
+    )
+  );
+
+  try {
+    const querySnapshot = await getDocs(q);
+    const users: User[] = [];
+    querySnapshot.forEach((doc) => {
+      // Exclude the current user from search results
+      if (doc.id !== currentUserId) {
+        const data = doc.data();
+        users.push({
+          id: doc.id,
+          name: data.displayName,
+          avatar: data.photoURL,
+          email: data.email,
+        });
+      }
+    });
+    return users;
+  } catch (error) {
+    console.error("Error searching users:", error);
+    return [];
+  }
+}
+
 
 export async function updateMessage(messageId: string, newContent: string) {
   if (!messageId || !newContent.trim()) {

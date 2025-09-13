@@ -59,20 +59,19 @@ export function ZMessenger() {
   const [localStreamState, setLocalStreamState] = useState<MediaStream | null>(null);
   const [remoteStreamState, setRemoteStreamState] = useState<MediaStream | null>(null);
 
-  // Derive loggedInUser from authUser and allUsers
-  useEffect(() => {
+  // Derive loggedInUser from authUser
+   useEffect(() => {
     if (authUser) {
-      const authUserData = allUsers.find(u => u.id === authUser.uid);
       setLoggedInUser({
         id: authUser.uid,
         name: authUser.displayName || 'You',
         avatar: authUser.photoURL || `https://picsum.photos/seed/${authUser.uid}/200/200`,
-        isOnline: authUserData?.isOnline,
+        isOnline: true,
       });
     } else {
       setLoggedInUser(null);
     }
-  }, [authUser, allUsers]);
+  }, [authUser]);
 
 
   // User presence management
@@ -462,21 +461,19 @@ export function ZMessenger() {
     return null; // Or a loading spinner, handled by page.tsx
   }
 
-  const otherUsers = allUsers.filter(u => u.id !== loggedInUser.id);
   const viewToShow = isMobile && !selectedUser ? 'sidebar' : 'chat';
   
   return (
-    <div className="h-full relative">
+    <div className="h-full relative overflow-hidden">
       <Card className="h-full flex shadow-lg overflow-hidden">
         { (viewToShow === 'sidebar' || !isMobile) &&
           <Sidebar
             conversations={conversations}
-            allUsers={otherUsers}
-            messages={messages}
             loggedInUser={loggedInUser}
             selectedUser={selectedUser}
             onSelectUser={handleSelectUser}
             onClearHistory={handleClearHistory}
+            messages={messages}
           />
         }
         { (viewToShow === 'chat' || !isMobile) &&
