@@ -499,7 +499,7 @@ export function Sidebar({ conversations, loggedInUser, selectedUser, onSelectUse
     user.name.toLowerCase().includes(searchTerm.toLowerCase())
   ) : conversationDetails;
 
-  const usersForNewChat = allUsers.filter(u => u.id !== loggedInUser.id && !conversations.some(c => c.id === u.id));
+  const usersForNewChat = Array.isArray(allUsers) ? allUsers.filter(u => u.id !== loggedInUser.id && !conversations.some(c => c.id === u.id)) : [];
 
   return (
     <div className="w-full md:w-1/3 md:max-w-sm lg:w-1/4 lg:max-w-md border-r flex flex-col">

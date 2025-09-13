@@ -62,16 +62,21 @@ export function ZMessenger() {
   // Derive loggedInUser from authUser
    useEffect(() => {
     if (authUser) {
-      setLoggedInUser({
-        id: authUser.uid,
-        name: authUser.displayName || 'You',
-        avatar: authUser.photoURL || `https://picsum.photos/seed/${authUser.uid}/200/200`,
-        isOnline: true,
-      });
+      const userFromList = allUsers.find(u => u.id === authUser.uid);
+      if (userFromList) {
+        setLoggedInUser(userFromList);
+      } else {
+        setLoggedInUser({
+          id: authUser.uid,
+          name: authUser.displayName || 'You',
+          avatar: authUser.photoURL || `https://picsum.photos/seed/${authUser.uid}/200/200`,
+          isOnline: true,
+        });
+      }
     } else {
       setLoggedInUser(null);
     }
-  }, [authUser]);
+  }, [authUser, allUsers]);
 
 
   // User presence management
@@ -474,6 +479,7 @@ export function ZMessenger() {
             onSelectUser={handleSelectUser}
             onClearHistory={handleClearHistory}
             messages={messages}
+            allUsers={allUsers}
           />
         }
         { (viewToShow === 'chat' || !isMobile) &&
