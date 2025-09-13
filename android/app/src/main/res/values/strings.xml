@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Z Messenger</string>
+    <string name="title_activity_main">Z Messenger</string>
+    <string name="package_name">com.zmessenger.app</string>
+    <string name="custom_url_scheme">com.zmessenger.app</string>
+</resources>

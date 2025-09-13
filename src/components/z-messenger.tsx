@@ -35,6 +35,7 @@ import { updateMessage, deleteMessage } from '@/app/actions';
 import type { Mood } from './mood-provider';
 import { useToast } from '@/hooks/use-toast';
 import { useChatSelection } from './chat-selection-provider';
+import { suggestReplies } from '@/ai/flows/smart-reply-flow';
 
 const getConversationId = (userId1: string, userId2: string) => {
   return [userId1, userId2].sort().join('_');
@@ -56,6 +57,8 @@ export function ZMessenger() {
   const [conversationMood, setConversationMood] = useState<Mood>('happy');
   const [selectedMessages, setSelectedMessages] = useState<string[]>([]);
   const { selectedUser: globallySelectedUser, selectUser: setGloballySelectedUser } = useChatSelection();
+  const [smartReplies, setSmartReplies] = useState<string[]>([]);
+  const [isGeneratingReplies, setIsGeneratingReplies] = useState(false);
 
 
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
@@ -307,77 +310,107 @@ export function ZMessenger() {
 
     return () => unsubscribe();
   }, [loggedInUser?.id, allUsers, callId, loggedInUser]);
+  
+  const currentChatMessages = useMemo(() => {
+    if (!selectedUser || !loggedInUser) return [];
+    return messages.filter(m => m.conversationId === getConversationId(loggedInUser.id, selectedUser.id));
+  }, [selectedUser, messages, loggedInUser]);
 
-  const handleSendMessage = async (content: string) => {
-    if (!content.trim() || !selectedUser || !loggedInUser) return;
+  // Generate Smart Replies
+  useEffect(() => {
+    if (!selectedUser || !loggedInUser || currentChatMessages.length === 0) {
+      setSmartReplies([]);
+      return;
+    }
 
-    const conversationId = getConversationId(loggedInUser.id, selectedUser.id);
-    await addDoc(collection(db, 'messages'), {
-      conversationId,
-      senderId: loggedInUser.id,
-      receiverId: selectedUser.id,
-      participants: [loggedInUser.id, selectedUser.id],
-      content,
-      timestamp: serverTimestamp(),
-      read: false,
-      reactions: [],
-      deletedFor: [],
-    });
-  };
+    const lastMessage = currentChatMessages[currentChatMessages.length - 1];
+    // Only generate replies if the last message is from the other user and is not a file
+    if (lastMessage.senderId === selectedUser.id && !lastMessage.fileURL) {
+      setIsGeneratingReplies(true);
+      setSmartReplies([]);
+      const history = currentChatMessages.slice(-5).map(m => ({
+        author: m.senderId === loggedInUser.id ? 'user' : 'other',
+        content: m.content
+      }));
+      
+      suggestReplies({ conversationHistory: history })
+        .then(response => {
+          setSmartReplies(response.replies || []);
+        })
+        .catch(error => {
+          console.error("Error generating smart replies:", error);
+          setSmartReplies([]);
+        })
+        .finally(() => {
+          setIsGeneratingReplies(false);
+        });
+    } else {
+      setSmartReplies([]);
+    }
+  }, [currentChatMessages, selectedUser, loggedInUser]);
 
-  const handleSendFile = async (file: File) => {
-    if (!selectedUser || !loggedInUser) return;
-
-    toast({
-        title: 'Uploading file...',
-        description: 'Please wait while your file is being uploaded.',
-    });
+  const handleSendMessage = async (content: string, file?: File) => {
+    if ((!content.trim() && !file) || !selectedUser || !loggedInUser) return;
+    
+    setSmartReplies([]);
 
     try {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = async () => {
-            const fileDataUri = reader.result as string;
-            const conversationId = getConversationId(loggedInUser.id, selectedUser.id);
-            
-            const match = fileDataUri.match(/^data:(.+);base64,(.+)$/);
-            if (!match) {
-                throw new Error('Invalid file data URI');
-            }
-            const contentType = match[1];
-            
-            const fileRef = ref(storage, `chat_media/${conversationId}/${Date.now()}_${file.name}`);
-            await uploadString(fileRef, fileDataUri, 'data_url', { contentType });
-            const downloadURL = await getDownloadURL(fileRef);
+      let filePayload: Partial<Message> = {};
 
-            await addDoc(collection(db, 'messages'), {
-                conversationId,
-                senderId: loggedInUser.id,
-                receiverId: selectedUser.id,
-                participants: [loggedInUser.id, selectedUser.id],
-                content: '',
-                fileURL: downloadURL,
-                fileName: file.name,
-                fileType: file.type,
-                timestamp: serverTimestamp(),
-                read: false,
-                reactions: [],
-                deletedFor: [],
-            });
-             toast({
-                title: 'Success!',
-                description: 'File uploaded successfully.',
-            });
-        };
-    } catch (error) {
-        console.error("Error sending file:", error);
+      if (file) {
         toast({
+            title: 'Uploading file...',
+            description: 'Please wait while your file is being uploaded.',
+        });
+        const reader = new FileReader();
+        
+        // This is an async operation, so we wrap it in a promise
+        const fileDataUri = await new Promise<string>((resolve, reject) => {
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+        
+        const conversationId = getConversationId(loggedInUser.id, selectedUser.id);
+        const match = fileDataUri.match(/^data:(.+);base64,(.+)$/);
+        if (!match) throw new Error('Invalid file data URI');
+        
+        const contentType = match[1];
+        const fileRef = ref(storage, `chat_media/${conversationId}/${Date.now()}_${file.name}`);
+        await uploadString(fileRef, fileDataUri, 'data_url', { contentType });
+        const downloadURL = await getDownloadURL(fileRef);
+
+        filePayload = {
+            fileURL: downloadURL,
+            fileName: file.name,
+            fileType: file.type,
+        };
+        toast({ title: 'Success!', description: 'File uploaded successfully.' });
+      }
+
+      const conversationId = getConversationId(loggedInUser.id, selectedUser.id);
+      await addDoc(collection(db, 'messages'), {
+        conversationId,
+        senderId: loggedInUser.id,
+        receiverId: selectedUser.id,
+        participants: [loggedInUser.id, selectedUser.id],
+        content,
+        timestamp: serverTimestamp(),
+        read: false,
+        reactions: [],
+        deletedFor: [],
+        ...filePayload
+      });
+    } catch (error) {
+       console.error("Error sending message:", error);
+       toast({
             variant: 'destructive',
-            title: 'Upload failed',
-            description: 'There was a problem uploading your file. Please try again.',
+            title: 'Send failed',
+            description: 'There was a problem sending your message. Please try again.',
         });
     }
   };
+
 
   const handleUpdateReaction = async (messageId: string, emoji: string) => {
     if (!loggedInUser) return;
@@ -462,12 +495,8 @@ export function ZMessenger() {
     }
     setSelectedUser(user);
     setSelectedMessages([]); // Clear selection when switching chats
+    setSmartReplies([]); // Clear smart replies
   };
-  
-  const currentChatMessages = useMemo(() => {
-    if (!selectedUser || !loggedInUser) return [];
-    return messages.filter(m => m.conversationId === getConversationId(loggedInUser.id, selectedUser.id));
-  }, [selectedUser, messages, loggedInUser]);
   
   const handleStartCall = async (userToCall: User, type: 'audio' | 'video') => {
     if (!loggedInUser) return;
@@ -642,7 +671,8 @@ export function ZMessenger() {
                     onTyping={handleTyping} 
                     editingMessage={editingMessage}
                     onCancelEdit={handleCancelEdit}
-                    onSendFile={handleSendFile}
+                    smartReplies={smartReplies}
+                    isGeneratingReplies={isGeneratingReplies}
                 />
               </>
             ) : (

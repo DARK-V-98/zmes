@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Check, CheckCheck, MoreVertical, Paperclip, Send, SmilePlus, ArrowLeft, Trash2, Phone, Edit, X, Smile, File, Download, Video } from 'lucide-react';
+import { Check, CheckCheck, MoreVertical, Paperclip, Send, SmilePlus, ArrowLeft, Trash2, Phone, Edit, X, Smile, File, Download, Video, Loader2 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import {
@@ -339,11 +339,11 @@ const ChatMessage = ({
           <div className={cn('flex flex-col max-w-[85%] sm:max-w-[80%]', isSender ? 'items-end' : 'items-start')}>
               <div className="relative">
                 <div className={cn(
-                  'px-3 py-2 sm:px-4 rounded-2xl',
+                  'px-3 py-2 sm:px-4 rounded-2xl space-y-2',
                   isSender ? 'bg-primary text-primary-foreground rounded-br-none' : 'bg-card border rounded-bl-none',
                   message.isDeleted && 'italic text-muted-foreground'
                 )}>
-                   {message.fileURL ? (
+                  {message.fileURL && (
                     isImage ? (
                         <Image src={message.fileURL} alt={message.fileName || 'Uploaded image'} width={200} height={200} className="rounded-lg max-w-xs" />
                     ) : isVideo ? (
@@ -357,8 +357,10 @@ const ChatMessage = ({
                             </div>
                        </a>
                     )
-                  ) : <p className="break-words overflow-wrap-anywhere text-sm sm:text-base">{message.content}</p>
-                 }
+                  )}
+                  {message.content &&
+                    <p className="break-words overflow-wrap-anywhere text-sm sm:text-base">{message.content}</p>
+                  }
                   {message.reactions && message.reactions.length > 0 && (
                     <div className="absolute -bottom-3 right-2 bg-card border rounded-full px-1.5 py-0.5 text-xs">
                       {message.reactions[0].emoji} {message.reactions.length}
@@ -487,15 +489,26 @@ export const ChatMessages = ({ messages, loggedInUser, allUsers, isTyping, selec
 };
 
 
-export const ChatInput = ({ onSendMessage, onUpdateMessage, onTyping, editingMessage, onCancelEdit, onSendFile }: { 
-    onSendMessage: (content: string) => void;
+export const ChatInput = ({ 
+    onSendMessage, 
+    onUpdateMessage, 
+    onTyping, 
+    editingMessage, 
+    onCancelEdit,
+    smartReplies,
+    isGeneratingReplies
+}: { 
+    onSendMessage: (content: string, file?: File) => void;
     onUpdateMessage: (messageId: string, newContent: string) => void;
     onTyping: (isTyping: boolean) => void;
     editingMessage: Message | null;
     onCancelEdit: () => void;
-    onSendFile: (file: File) => void;
+    smartReplies: string[];
+    isGeneratingReplies: boolean;
 }) => {
   const [message, setMessage] = useState('');
+  const [attachedFile, setAttachedFile] = useState<File | null>(null);
+  const [filePreview, setFilePreview] = useState<string | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -505,6 +518,8 @@ export const ChatInput = ({ onSendMessage, onUpdateMessage, onTyping, editingMes
       if (editingMessage) {
           setMessage(editingMessage.content);
           inputRef.current?.focus();
+          setAttachedFile(null);
+          setFilePreview(null);
       } else {
           setMessage('');
       }
@@ -533,13 +548,15 @@ export const ChatInput = ({ onSendMessage, onUpdateMessage, onTyping, editingMes
     }
     onTyping(false);
 
-    if (message.trim()) {
+    if (message.trim() || attachedFile) {
       if (editingMessage) {
           onUpdateMessage(editingMessage.id, message);
       } else {
-          onSendMessage(message);
+          onSendMessage(message, attachedFile || undefined);
       }
       setMessage('');
+      setAttachedFile(null);
+      setFilePreview(null);
     }
   };
 
@@ -554,16 +571,43 @@ export const ChatInput = ({ onSendMessage, onUpdateMessage, onTyping, editingMes
             });
             return;
         }
-        onSendFile(file);
+        setAttachedFile(file);
+        setFilePreview(URL.createObjectURL(file));
+        onCancelEdit(); // Cancel any ongoing edit
     }
     // Reset file input
     if(event.target) {
         event.target.value = '';
     }
   };
+
+  const handleRemoveAttachment = () => {
+      setAttachedFile(null);
+      setFilePreview(null);
+  }
   
+  const handleSmartReplyClick = (reply: string) => {
+    onSendMessage(reply);
+  };
+
   return (
     <div className="p-2 sm:p-4 border-t bg-card">
+       {(smartReplies.length > 0 || isGeneratingReplies) && (
+        <div className="flex items-center gap-2 mb-2 px-1">
+          {isGeneratingReplies ? (
+            <div className="flex items-center text-sm text-muted-foreground">
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              <span>Generating replies...</span>
+            </div>
+          ) : (
+            smartReplies.map((reply, index) => (
+              <Button key={index} variant="outline" size="sm" className="rounded-full" onClick={() => handleSmartReplyClick(reply)}>
+                {reply}
+              </Button>
+            ))
+          )}
+        </div>
+      )}
       {editingMessage && (
           <div className="flex items-center justify-between bg-secondary p-2 rounded-t-md">
               <div>
@@ -575,6 +619,18 @@ export const ChatInput = ({ onSendMessage, onUpdateMessage, onTyping, editingMes
               </Button>
           </div>
       )}
+      {filePreview && (
+          <div className="relative w-24 h-24 mb-2 rounded-md overflow-hidden">
+                {attachedFile?.type.startsWith('image/') ? (
+                    <Image src={filePreview} alt="preview" layout="fill" objectFit="cover" />
+                ) : (
+                    <video src={filePreview} className="w-full h-full object-cover" />
+                )}
+                <Button variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 rounded-full" onClick={handleRemoveAttachment}>
+                    <X className="h-4 w-4" />
+                </Button>
+          </div>
+      )}
       <div className="relative flex items-center gap-2">
         <Input
           ref={inputRef}
@@ -583,20 +639,21 @@ export const ChatInput = ({ onSendMessage, onUpdateMessage, onTyping, editingMes
           onKeyDown={(e) => e.key === 'Enter' && handleSend()}
           placeholder="Type a message..."
           className="pr-16 sm:pr-20 h-10 sm:h-11 rounded-full"
+          disabled={!!editingMessage && !!attachedFile}
         />
         <div className="absolute top-1/2 right-2 -translate-y-1/2 flex items-center gap-1">
             <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*,video/*" />
             <TooltipProvider>
                 <Tooltip>
                     <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="rounded-full h-7 w-7 sm:h-8 sm:w-8" onClick={() => fileInputRef.current?.click()}>
+                    <Button variant="ghost" size="icon" className="rounded-full h-7 w-7 sm:h-8 sm:w-8" onClick={() => fileInputRef.current?.click()} disabled={!!editingMessage}>
                         <Paperclip className="h-4 w-4 sm:h-5 sm:w-5"/>
                     </Button>
                     </TooltipTrigger>
                     <TooltipContent>Attach media</TooltipContent>
                 </Tooltip>
             </TooltipProvider>
-            <Button size="icon" className="rounded-full h-7 w-7 sm:h-8 sm:w-8" onClick={handleSend} disabled={!message.trim()}>
+            <Button size="icon" className="rounded-full h-7 w-7 sm:h-8 sm:w-8" onClick={handleSend} disabled={!message.trim() && !attachedFile}>
                 <Send className="h-4 w-4 sm:h-5 sm:w-5" />
             </Button>
         </div>
