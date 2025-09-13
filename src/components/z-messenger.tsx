@@ -52,6 +52,7 @@ export function ZMessenger() {
   const [callId, setCallId] = useState<string | null>(null);
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
   const [conversationMood, setConversationMood] = useState<Mood>('happy');
+  const [selectedMessages, setSelectedMessages] = useState<string[]>([]);
 
 
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
@@ -426,6 +427,7 @@ export function ZMessenger() {
   
   const handleSelectUser = (user: User) => {
     setSelectedUser(user);
+    setSelectedMessages([]); // Clear selection when switching chats
   }
   
   const currentChatMessages = useMemo(() => {
@@ -523,6 +525,34 @@ export function ZMessenger() {
     }
   };
   
+  const handleSelectMessage = (messageId: string) => {
+    setSelectedMessages(prev => 
+      prev.includes(messageId) 
+        ? prev.filter(id => id !== messageId)
+        : [...prev, messageId]
+    );
+  };
+
+  const handleClearSelection = () => {
+    setSelectedMessages([]);
+  };
+
+  const handleDeleteSelectedMessages = async () => {
+    const promises = selectedMessages.map(id => deleteMessage(id));
+    try {
+      await Promise.all(promises);
+    } catch (error) {
+      console.error("Error deleting selected messages:", error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Could not delete all selected messages.',
+      });
+    } finally {
+      setSelectedMessages([]);
+    }
+  };
+  
   if (!loggedInUser) {
     return null; // Or a loading spinner, handled by page.tsx
   }
@@ -555,6 +585,9 @@ export function ZMessenger() {
                   onStartCall={handleStartCall}
                   onSetMood={handleSetMood}
                   mood={conversationMood}
+                  selectedMessagesCount={selectedMessages.length}
+                  onDeleteSelected={handleDeleteSelectedMessages}
+                  onClearSelection={handleClearSelection}
                 />
                 <div className="flex-1 flex flex-col overflow-y-auto">
                     <ChatMessages 
@@ -562,9 +595,11 @@ export function ZMessenger() {
                         loggedInUser={loggedInUser} 
                         allUsers={[loggedInUser, ...allUsers]} 
                         isTyping={isTyping} 
+                        selectedMessages={selectedMessages}
                         onUpdateReaction={handleUpdateReaction}
                         onEdit={handleEditMessage}
                         onDelete={handleDeleteMessage}
+                        onSelectMessage={handleSelectMessage}
                     />
                 </div>
                 <ChatInput 

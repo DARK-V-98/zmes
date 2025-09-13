@@ -86,13 +86,74 @@ const MoodChanger = ({ onSetMood }: { onSetMood: (mood: Mood) => void }) => {
 };
 
 
-export const ChatHeader = ({ user, onBack, isMobile, onClearHistory, onStartCall, onSetMood, mood }: { user: User, onBack?: () => void, isMobile: boolean, onClearHistory: () => void, onStartCall: (user: User, type: 'audio' | 'video') => void, onSetMood: (mood: Mood) => void, mood: Mood }) => {
+export const ChatHeader = ({ 
+  user, 
+  onBack, 
+  isMobile, 
+  onClearHistory, 
+  onStartCall, 
+  onSetMood, 
+  mood,
+  selectedMessagesCount,
+  onDeleteSelected,
+  onClearSelection,
+}: { 
+  user: User, 
+  onBack?: () => void, 
+  isMobile: boolean, 
+  onClearHistory: () => void, 
+  onStartCall: (user: User, type: 'audio' | 'video') => void, 
+  onSetMood: (mood: Mood) => void, 
+  mood: Mood,
+  selectedMessagesCount: number,
+  onDeleteSelected: () => void,
+  onClearSelection: () => void,
+}) => {
   const [isAlertOpen, setIsAlertOpen] = useState(false);
+  const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
 
   const handleClearHistory = () => {
     onClearHistory();
     setIsAlertOpen(false);
   }
+  
+  const handleDelete = () => {
+    onDeleteSelected();
+    setIsDeleteAlertOpen(false);
+  };
+
+  if (selectedMessagesCount > 0) {
+    return (
+      <div className="flex items-center p-2 sm:p-4 border-b bg-card z-10">
+        <Button variant="ghost" size="icon" className="mr-2 h-8 w-8" onClick={onClearSelection}>
+          <X />
+        </Button>
+        <div className="flex-1">
+          <p className="font-semibold">{selectedMessagesCount} selected</p>
+        </div>
+        <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
+            <AlertDialogTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
+                    <Trash2 />
+                </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Delete {selectedMessagesCount} message{selectedMessagesCount > 1 ? 's' : ''}?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                    This will delete the message(s) for everyone. This action cannot be undone.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    );
+  }
+
 
   return (
     <div className={cn("flex items-center p-2 sm:p-4 border-b bg-card z-10 transition-colors", THEME_MAP[mood])}>
@@ -205,19 +266,46 @@ const ChatMessage = ({
   message, 
   isSender, 
   sender, 
+  isSelected,
   onUpdateReaction,
   onEdit,
   onDelete,
+  onSelectMessage,
 }: { 
   message: Message; 
   isSender: boolean; 
   sender: User; 
+  isSelected: boolean;
   onUpdateReaction: (messageId: string, emoji: string) => void;
   onEdit: (message: Message) => void;
   onDelete: (messageId: string) => void;
+  onSelectMessage: (messageId: string) => void;
 }) => {
     const [showActions, setShowActions] = useState(false);
     const [isAlertOpen, setIsAlertOpen] = useState(false);
+    const longPressTimerRef = useRef<NodeJS.Timeout>();
+
+    const handlePointerDown = () => {
+        longPressTimerRef.current = setTimeout(() => {
+            onSelectMessage(message.id);
+        }, 500); // 500ms for long press
+    };
+
+    const handlePointerUp = () => {
+        if (longPressTimerRef.current) {
+            clearTimeout(longPressTimerRef.current);
+        }
+    };
+    
+    const handlePointerLeave = () => {
+        if (longPressTimerRef.current) {
+            clearTimeout(longPressTimerRef.current);
+        }
+    };
+    
+    const handleClick = () => {
+        onSelectMessage(message.id)
+    }
 
     const handleDelete = () => {
         onDelete(message.id);
@@ -230,9 +318,16 @@ const ChatMessage = ({
     return (
       <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
         <div
-          className={cn('group my-3 sm:my-4 flex gap-2 sm:gap-3', isSender ? 'justify-end' : 'justify-start')}
+          className={cn('group my-3 sm:my-4 flex gap-2 sm:gap-3 transition-colors duration-200 p-1 rounded-lg', 
+            isSender ? 'justify-end' : 'justify-start',
+            isSelected && 'bg-primary/10'
+          )}
           onMouseEnter={() => setShowActions(true)}
           onMouseLeave={() => setShowActions(false)}
+          onPointerDown={handlePointerDown}
+          onPointerUp={handlePointerUp}
+          onPointerLeave={handlePointerLeave}
+          onClick={isSelected ? handleClick : undefined}
         >
           {!isSender && (
             <Avatar className="h-8 w-8 sm:h-10 sm:w-10 self-end">
@@ -277,7 +372,7 @@ const ChatMessage = ({
               </div>
           </div>
           
-          <div className={cn("self-center transition-opacity duration-200 flex", showActions ? "opacity-100" : "opacity-0")}>
+          <div className={cn("self-center transition-opacity duration-200 flex", (showActions && !isSelected) ? "opacity-100" : "opacity-0")}>
             <EmojiPicker onSelectEmoji={(emoji) => onUpdateReaction(message.id, emoji)} />
              {isSender && !message.isDeleted && (
                 <DropdownMenu>
@@ -328,14 +423,16 @@ const TypingIndicator = () => (
 );
 
 
-export const ChatMessages = ({ messages, loggedInUser, allUsers, isTyping, onUpdateReaction, onEdit, onDelete }: { 
+export const ChatMessages = ({ messages, loggedInUser, allUsers, isTyping, selectedMessages, onUpdateReaction, onEdit, onDelete, onSelectMessage }: { 
     messages: Message[]; 
     loggedInUser: User; 
     allUsers: User[], 
     isTyping: boolean, 
+    selectedMessages: string[],
     onUpdateReaction: (messageId: string, emoji: string) => void;
     onEdit: (message: Message) => void;
     onDelete: (messageId: string) => void;
+    onSelectMessage: (messageId: string) => void;
 }) => {
   const viewportRef = useRef<HTMLDivElement>(null);
   const atBottomRef = useRef(true);
@@ -371,9 +468,11 @@ export const ChatMessages = ({ messages, loggedInUser, allUsers, isTyping, onUpd
                     message={message} 
                     isSender={isSender} 
                     sender={sender} 
+                    isSelected={selectedMessages.includes(message.id)}
                     onUpdateReaction={onUpdateReaction}
                     onEdit={onEdit}
                     onDelete={onDelete}
+                    onSelectMessage={onSelectMessage}
                  />;
         }) : (
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
