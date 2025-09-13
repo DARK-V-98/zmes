@@ -13,6 +13,7 @@ import { useAuth } from '@/components/auth-provider';
 import { Card } from '@/components/ui/card';
 import Image from 'next/image';
 import Link from 'next/link';
+import { cn } from '@/lib/utils';
 
 const SocialIcon = ({ type }: { type: string }) => {
     switch (type) {
