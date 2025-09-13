@@ -403,7 +403,8 @@ const ConversationItem = ({
   };
 
   return (
-     <ContextMenu>
+     <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
+      <ContextMenu>
         <ContextMenuTrigger>
           <Button
             variant="ghost"
@@ -434,28 +435,27 @@ const ConversationItem = ({
         {onClearHistory && (
           <ContextMenuContent>
             <ContextMenuItem onClick={() => onSelectUser(user)}>Open Chat</ContextMenuItem>
-             <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
-                <AlertDialogTrigger asChild>
-                    <ContextMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
-                        <Trash2 className="mr-2 h-4 w-4" /> Delete Chat
-                    </ContextMenuItem>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                        This will delete the chat history for you only. The other person will still see the messages. This action cannot be undone.
-                    </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDeleteChat}>Continue</AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-             </AlertDialog>
+            <AlertDialogTrigger asChild>
+                <ContextMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
+                    <Trash2 className="mr-2 h-4 w-4" /> Delete Chat
+                </ContextMenuItem>
+            </AlertDialogTrigger>
           </ContextMenuContent>
         )}
       </ContextMenu>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+        <AlertDialogDescription>
+            This will delete the chat history for you only. The other person will still see the messages. This action cannot be undone.
+        </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+        <AlertDialogCancel>Cancel</AlertDialogCancel>
+        <AlertDialogAction onClick={handleDeleteChat}>Continue</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 };
 
