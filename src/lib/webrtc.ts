@@ -166,25 +166,29 @@ export const hangUp = async (
     localStreamRef: React.MutableRefObject<MediaStream | null>,
     remoteStreamRef: React.MutableRefObject<MediaStream | null>
 ) => {
-    if (pcRef.current) {
-        pcRef.current.close();
-    }
-    if (localStreamRef.current) {
-        localStreamRef.current.getTracks().forEach(track => track.stop());
-    }
-     if (remoteStreamRef.current) {
-        remoteStreamRef.current.getTracks().forEach(track => track.stop());
-    }
-
-    if (callId) {
-        const callDocRef = doc(db, 'calls', callId);
-        const callDocSnapshot = await getDoc(callDocRef);
-        if (callDocSnapshot.exists()){
-           await deleteDoc(callDocRef);
+    try {
+        if (pcRef.current) {
+            pcRef.current.close();
         }
-    }
+        if (localStreamRef.current) {
+            localStreamRef.current.getTracks().forEach(track => track.stop());
+        }
+        if (remoteStreamRef.current) {
+            remoteStreamRef.current.getTracks().forEach(track => track.stop());
+        }
 
-    pcRef.current = null;
-    localStreamRef.current = null;
-    remoteStreamRef.current = null;
+        if (callId) {
+            const callDocRef = doc(db, 'calls', callId);
+            const callDocSnapshot = await getDoc(callDocRef);
+            if (callDocSnapshot.exists()) {
+               await deleteDoc(callDocRef);
+            }
+        }
+    } catch (error) {
+        console.error("Error during hangup:", error);
+    } finally {
+        pcRef.current = null;
+        localStreamRef.current = null;
+        remoteStreamRef.current = null;
+    }
 };

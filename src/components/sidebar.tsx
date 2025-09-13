@@ -15,7 +15,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from './ui/dialog';
 import { usePWAInstall } from './pwa-install-provider';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from './ui/tooltip';
@@ -45,6 +44,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useTheme, type Theme } from './theme-provider';
+import { DialogTrigger } from '@radix-ui/react-dialog';
 
 interface SidebarProps {
   conversations: User[];
@@ -373,36 +373,36 @@ const ConversationItem = ({
   };
 
   return (
-    <ContextMenu>
-        <ContextMenuTrigger>
-            <Button
-                variant="ghost"
-                className={cn(
-                'w-full h-auto justify-start items-center p-3 text-left rounded-lg transition-colors',
-                selectedUser?.id === user.id && 'bg-secondary'
-                )}
-                onClick={() => onSelectUser(user)}
-            >
-                <Avatar className="h-10 w-10 sm:h-12 sm:w-12 mr-4 relative">
-                <AvatarImage src={user.avatar} alt={user.name} data-ai-hint="profile picture" />
-                <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-                {user.isOnline && (
-                    <div className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-accent ring-2 ring-background"></div>
-                )}
-                </Avatar>
-                <div className="flex-1 overflow-hidden">
-                <p className="font-semibold truncate">{user.name}</p>
-                {lastMessage && (
-                    <p className="text-sm text-muted-foreground truncate">{lastMessage}</p>
-                )}
-                </div>
-                {unreadCount !== undefined && unreadCount > 0 && (
-                <Badge className="bg-primary text-primary-foreground ml-2">{unreadCount}</Badge>
-                )}
-            </Button>
-        </ContextMenuTrigger>
-        {onClearHistory && (
-             <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
+      <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
+        <ContextMenu>
+            <ContextMenuTrigger>
+                <Button
+                    variant="ghost"
+                    className={cn(
+                    'w-full h-auto justify-start items-center p-3 text-left rounded-lg transition-colors',
+                    selectedUser?.id === user.id && 'bg-secondary'
+                    )}
+                    onClick={() => onSelectUser(user)}
+                >
+                    <Avatar className="h-10 w-10 sm:h-12 sm:w-12 mr-4 relative">
+                    <AvatarImage src={user.avatar} alt={user.name} data-ai-hint="profile picture" />
+                    <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                    {user.isOnline && (
+                        <div className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-accent ring-2 ring-background"></div>
+                    )}
+                    </Avatar>
+                    <div className="flex-1 overflow-hidden">
+                    <p className="font-semibold truncate">{user.name}</p>
+                    {lastMessage && (
+                        <p className="text-sm text-muted-foreground truncate">{lastMessage}</p>
+                    )}
+                    </div>
+                    {unreadCount !== undefined && unreadCount > 0 && (
+                    <Badge className="bg-primary text-primary-foreground ml-2">{unreadCount}</Badge>
+                    )}
+                </Button>
+            </ContextMenuTrigger>
+            {onClearHistory && (
                 <ContextMenuContent>
                     <ContextMenuItem onClick={() => onSelectUser(user)}>Open Chat</ContextMenuItem>
                     <AlertDialogTrigger asChild>
@@ -411,21 +411,21 @@ const ConversationItem = ({
                         </ContextMenuItem>
                     </AlertDialogTrigger>
                 </ContextMenuContent>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            This will delete the chat history for you only. The other person will still see the messages. This action cannot be undone.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDeleteChat}>Continue</AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-        )}
-      </ContextMenu>
+            )}
+        </ContextMenu>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                    This will delete the chat history for you only. The other person will still see the messages. This action cannot be undone.
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteChat}>Continue</AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+    </AlertDialog>
   );
 };
 

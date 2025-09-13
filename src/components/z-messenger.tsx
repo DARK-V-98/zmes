@@ -29,26 +29,22 @@ import {
 import { useMediaQuery } from '@/hooks/use-media-query';
 import { useAuth } from './auth-provider';
 import { CallView, type Call } from './call-view';
-import { createPeerConnection, hangUp, answerCall, startCall } from '@/lib/webrtc';
+import { hangUp, answerCall, startCall } from '@/lib/webrtc';
 import { updateMessage, deleteMessage } from '@/app/actions';
 import type { Mood } from './mood-provider';
-
-interface ZMessengerProps {
-  loggedInUser: User;
-}
 
 const getConversationId = (userId1: string, userId2: string) => {
   return [userId1, userId2].sort().join('_');
 };
 
-export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
+export function ZMessenger() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const isMobile = useMediaQuery('(max-width: 768px)');
   const [isTyping, setIsTyping] = useState(false);
   const { user: authUser } = useAuth();
-  const [loggedInUser, setLoggedInUser] = useState(initialUser);
+  const [loggedInUser, setLoggedInUser] = useState<User | null>(null);
   const [activeCall, setActiveCall] = useState<Call | null>(null);
   const [incomingCall, setIncomingCall] = useState<Call | null>(null);
   const [callId, setCallId] = useState<string | null>(null);
@@ -63,24 +59,25 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
   const [localStreamState, setLocalStreamState] = useState<MediaStream | null>(null);
   const [remoteStreamState, setRemoteStreamState] = useState<MediaStream | null>(null);
 
-  // Keep loggedInUser state in sync with AuthProvider and other users' state
+  // Derive loggedInUser from authUser and allUsers
   useEffect(() => {
     if (authUser) {
       const authUserData = allUsers.find(u => u.id === authUser.uid);
-      const updatedUser = {
+      setLoggedInUser({
         id: authUser.uid,
         name: authUser.displayName || 'You',
         avatar: authUser.photoURL || `https://picsum.photos/seed/${authUser.uid}/200/200`,
         isOnline: authUserData?.isOnline,
-      };
-      setLoggedInUser(updatedUser);
+      });
+    } else {
+      setLoggedInUser(null);
     }
   }, [authUser, allUsers]);
 
 
   // User presence management
   useEffect(() => {
-    if (!loggedInUser.id) return;
+    if (!loggedInUser?.id) return;
     const userRef = doc(db, 'users', loggedInUser.id);
     
     const updateUserPresence = (isOnline: boolean) => {
@@ -99,7 +96,7 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
         updateUserPresence(false);
         window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [loggedInUser.id]);
+  }, [loggedInUser?.id]);
 
 
   // Fetch all users
@@ -133,7 +130,7 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
 
   // Fetch all messages for the logged-in user
   useEffect(() => {
-    if (!loggedInUser.id) return;
+    if (!loggedInUser?.id) return;
 
     const messagesQuery = query(
       collection(db, 'messages'),
@@ -156,10 +153,11 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
     });
 
     return () => unsubscribeMessages();
-  }, [loggedInUser.id]);
+  }, [loggedInUser?.id]);
 
 
   const conversations = useMemo(() => {
+    if (!loggedInUser?.id) return [];
     const userIdsInConversations = new Set<string>();
     messages.forEach(message => {
         if (!message.deletedFor?.includes(loggedInUser.id)) {
@@ -173,7 +171,7 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
     
     return conversationUsers;
 
-  }, [messages, allUsers, loggedInUser.id]);
+  }, [messages, allUsers, loggedInUser?.id]);
 
   // Set initial user on desktop
   useEffect(() => {
@@ -185,7 +183,7 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
 
   // Mark messages as read
   useEffect(() => {
-    if (!selectedUser || !loggedInUser.id) return;
+    if (!selectedUser || !loggedInUser?.id) return;
 
     const unreadMessages = messages.filter(m => 
         m.receiverId === loggedInUser.id && 
@@ -201,12 +199,12 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
         });
         batch.commit().catch(console.error);
     }
-  }, [selectedUser, messages, loggedInUser.id]);
+  }, [selectedUser, messages, loggedInUser?.id]);
 
 
   // Typing status and mood management for the current conversation
   useEffect(() => {
-    if (!selectedUser || !loggedInUser.id) return;
+    if (!selectedUser || !loggedInUser?.id) return;
     const conversationId = getConversationId(loggedInUser.id, selectedUser.id);
     const conversationRef = doc(db, 'conversations', conversationId);
 
@@ -232,12 +230,12 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
     });
 
     return () => unsubscribe();
-  }, [selectedUser, loggedInUser.id]);
+  }, [selectedUser, loggedInUser?.id]);
 
 
   // Listen for incoming calls
   useEffect(() => {
-    if (!loggedInUser.id) return;
+    if (!loggedInUser?.id) return;
 
     const callsQuery = query(
       collection(db, 'calls'),
@@ -250,7 +248,7 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
           const callData = change.doc.data();
           if (callData.offer) {
             const caller = allUsers.find(u => u.id === callData.callerId);
-            if (caller) {
+            if (caller && loggedInUser) {
               setIncomingCall({
                 caller: caller,
                 callee: loggedInUser,
@@ -260,7 +258,6 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
             }
           }
         } else if (change.type === 'removed') {
-           // If the call document is removed, it means the caller cancelled or the call ended.
            if (change.doc.id === callId) {
              setIncomingCall(null);
              handleEndCall();
@@ -270,10 +267,10 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
     });
 
     return () => unsubscribe();
-  }, [loggedInUser.id, allUsers, callId]);
+  }, [loggedInUser?.id, allUsers, callId, loggedInUser]);
 
   const handleSendMessage = async (content: string) => {
-    if (!content.trim() || !selectedUser) return;
+    if (!content.trim() || !selectedUser || !loggedInUser) return;
 
     const conversationId = getConversationId(loggedInUser.id, selectedUser.id);
     await addDoc(collection(db, 'messages'), {
@@ -290,6 +287,7 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
   };
 
   const handleUpdateReaction = async (messageId: string, emoji: string) => {
+    if (!loggedInUser) return;
     const messageRef = doc(db, 'messages', messageId);
     const messageDoc = await getDoc(messageRef);
     if (!messageDoc.exists()) return;
@@ -315,6 +313,7 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
   };
 
   const handleClearHistory = async (otherUserId: string) => {
+    if (!loggedInUser) return;
     const conversationId = getConversationId(loggedInUser.id, otherUserId);
     const messagesQuery = query(
       collection(db, 'messages'),
@@ -336,7 +335,7 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
   };
 
   const handleTyping = async (isTyping: boolean) => {
-    if (!selectedUser) return;
+    if (!selectedUser || !loggedInUser) return;
     const conversationId = getConversationId(loggedInUser.id, selectedUser.id);
     const conversationRef = doc(db, 'conversations', conversationId);
     try {
@@ -351,7 +350,7 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
   }
 
   const handleSetMood = async (mood: Mood) => {
-    if (!selectedUser) return;
+    if (!selectedUser || !loggedInUser) return;
     const conversationId = getConversationId(loggedInUser.id, selectedUser.id);
     const conversationRef = doc(db, 'conversations', conversationId);
     try {
@@ -364,14 +363,14 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
   const handleSelectUser = (user: User) => {
     setSelectedUser(user);
   }
-
-  const otherUsers = allUsers.filter(u => u.id !== loggedInUser.id);
   
-  const currentChatMessages = useMemo(() => selectedUser 
-    ? messages.filter(m => m.conversationId === getConversationId(loggedInUser.id, selectedUser.id)) 
-    : [], [selectedUser, messages, loggedInUser.id]);
+  const currentChatMessages = useMemo(() => {
+    if (!selectedUser || !loggedInUser) return [];
+    return messages.filter(m => m.conversationId === getConversationId(loggedInUser.id, selectedUser.id));
+  }, [selectedUser, messages, loggedInUser]);
   
   const handleStartCall = async (userToCall: User) => {
+    if (!loggedInUser) return;
     const newCallId = await startCall(loggedInUser, userToCall, (pc, local, remote) => {
       peerConnectionRef.current = pc;
       localStreamRef.current = local;
@@ -413,7 +412,11 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
 
   const handleDeclineCall = async () => {
     if (callId) {
-      await deleteDoc(doc(db, 'calls', callId));
+      const callDocRef = doc(db, 'calls', callId);
+      const docSnap = await getDoc(callDocRef);
+      if (docSnap.exists()) {
+        await deleteDoc(callDocRef);
+      }
     }
     setIncomingCall(null);
     setCallId(null);
@@ -455,6 +458,11 @@ export function ZMessenger({ loggedInUser: initialUser }: ZMessengerProps) {
     }
   };
   
+  if (!loggedInUser) {
+    return null; // Or a loading spinner, handled by page.tsx
+  }
+
+  const otherUsers = allUsers.filter(u => u.id !== loggedInUser.id);
   const viewToShow = isMobile && !selectedUser ? 'sidebar' : 'chat';
   
   return (

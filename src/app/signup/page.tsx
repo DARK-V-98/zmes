@@ -69,7 +69,7 @@ export default function SignupPage() {
         displayName: name,
         email: user.email,
         photoURL: user.photoURL,
-        isOnline: false,
+        isOnline: true,
         lastSeen: serverTimestamp(),
       });
 
@@ -88,6 +88,7 @@ export default function SignupPage() {
 
   const handleGoogleSignup = async () => {
     setGoogleLoading(true);
+    setError(null);
     const provider = new GoogleAuthProvider();
     try {
       const result = await signInWithPopup(auth, provider);
@@ -102,7 +103,7 @@ export default function SignupPage() {
             displayName: user.displayName,
             email: user.email,
             photoURL: user.photoURL,
-            isOnline: false,
+            isOnline: true,
             lastSeen: serverTimestamp(),
           });
       }

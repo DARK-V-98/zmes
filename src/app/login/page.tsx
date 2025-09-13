@@ -76,6 +76,7 @@ export default function LoginPage() {
   
   const handleGoogleLogin = async () => {
     setGoogleLoading(true);
+    setError(null);
     const provider = new GoogleAuthProvider();
     try {
       const result = await signInWithPopup(auth, provider);
@@ -90,7 +91,7 @@ export default function LoginPage() {
             displayName: user.displayName,
             email: user.email,
             photoURL: user.photoURL,
-            isOnline: false,
+            isOnline: true,
             lastSeen: serverTimestamp(),
           });
       }
