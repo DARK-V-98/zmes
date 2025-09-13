@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import type { Message, User } from '@/lib/data';
+import type { LinkPreview, Message, User } from '@/lib/data';
 import { Sidebar } from '@/components/sidebar';
 import { ChatHeader, ChatMessages, ChatInput } from '@/components/chat';
 import { Card } from '@/components/ui/card';
@@ -36,10 +36,14 @@ import type { Mood } from './mood-provider';
 import { useToast } from '@/hooks/use-toast';
 import { useChatSelection } from './chat-selection-provider';
 import { suggestReplies } from '@/ai/flows/smart-reply-flow';
+import { extractLinkMetadata } from '@/ai/flows/extract-link-metadata-flow';
 
 const getConversationId = (userId1: string, userId2: string) => {
   return [userId1, userId2].sort().join('_');
 };
+
+const URL_REGEX = /https?:\/\/[^\s/$.?#].[^\s]*/i;
+
 
 export function ZMessenger() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -356,6 +360,7 @@ export function ZMessenger() {
 
     try {
       let filePayload: Partial<Message> = {};
+      let linkPreviewPayload: Partial<Message> = {};
 
       if (file) {
         toast({
@@ -364,7 +369,6 @@ export function ZMessenger() {
         });
         const reader = new FileReader();
         
-        // This is an async operation, so we wrap it in a promise
         const fileDataUri = await new Promise<string>((resolve, reject) => {
             reader.onload = () => resolve(reader.result as string);
             reader.onerror = reject;
@@ -388,6 +392,16 @@ export function ZMessenger() {
         toast({ title: 'Success!', description: 'File uploaded successfully.' });
       }
 
+      // Check for link and generate preview
+      const urlMatch = content.match(URL_REGEX);
+      if (urlMatch) {
+        const url = urlMatch[0];
+        const metadata = await extractLinkMetadata({ url });
+        if (metadata) {
+            linkPreviewPayload.linkPreview = { ...metadata, url };
+        }
+      }
+
       const conversationId = getConversationId(loggedInUser.id, selectedUser.id);
       await addDoc(collection(db, 'messages'), {
         conversationId,
@@ -399,7 +413,8 @@ export function ZMessenger() {
         read: false,
         reactions: [],
         deletedFor: [],
-        ...filePayload
+        ...filePayload,
+        ...linkPreviewPayload,
       });
     } catch (error) {
        console.error("Error sending message:", error);

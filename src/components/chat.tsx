@@ -3,7 +3,7 @@
 
 import React from 'react';
 import { useState, useRef, useEffect } from 'react';
-import type { Message, User } from '@/lib/data';
+import type { LinkPreview, Message, User } from '@/lib/data';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -34,6 +34,7 @@ import { THEME_MAP } from './theme-provider';
 import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
 import Link from 'next/link';
+import { Card } from './ui/card';
 
 const MoodChanger = ({ onSetMood }: { onSetMood: (mood: Mood) => void }) => {
   const moods: { mood: Mood; emoji: string }[] = [
@@ -262,6 +263,25 @@ const EmojiPicker = ({ onSelectEmoji }: { onSelectEmoji: (emoji: string) => void
   );
 };
 
+const LinkPreviewCard = ({ preview }: { preview: LinkPreview }) => {
+    return (
+        <a href={preview.url} target="_blank" rel="noopener noreferrer" className="mt-2 block">
+            <Card className="overflow-hidden hover:bg-secondary/50 transition-colors">
+                {preview.imageUrl && (
+                    <div className="relative h-32 w-full">
+                        <Image src={preview.imageUrl} alt={preview.title} layout="fill" objectFit="cover" />
+                    </div>
+                )}
+                <div className="p-3">
+                    <p className="font-semibold text-sm truncate">{preview.title}</p>
+                    <p className="text-xs text-muted-foreground line-clamp-2">{preview.description}</p>
+                    <p className="text-xs text-muted-foreground/80 mt-1 truncate">{new URL(preview.url).hostname}</p>
+                </div>
+            </Card>
+        </a>
+    );
+};
+
 const ChatMessage = ({ 
   message, 
   isSender, 
@@ -361,6 +381,7 @@ const ChatMessage = ({
                   {message.content &&
                     <p className="break-words overflow-wrap-anywhere text-sm sm:text-base">{message.content}</p>
                   }
+                  {message.linkPreview && <LinkPreviewCard preview={message.linkPreview} />}
                   {message.reactions && message.reactions.length > 0 && (
                     <div className="absolute -bottom-3 right-2 bg-card border rounded-full px-1.5 py-0.5 text-xs">
                       {message.reactions[0].emoji} {message.reactions.length}

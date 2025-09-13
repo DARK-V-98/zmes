@@ -11,6 +11,13 @@ export type User = {
   role?: 'user' | 'developer';
 };
 
+export type LinkPreview = {
+  url: string;
+  title: string;
+  description: string;
+  imageUrl?: string;
+};
+
 export type Message = {
   id: string;
   conversationId: string;
@@ -26,4 +33,5 @@ export type Message = {
   fileURL?: string;
   fileName?: string;
   fileType?: string;
+  linkPreview?: LinkPreview;
 };
