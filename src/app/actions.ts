@@ -5,50 +5,30 @@ import { doc, updateDoc, setDoc, collection, query, where, getDocs, or } from 'f
 import { getDownloadURL, ref, uploadString } from 'firebase/storage';
 import type { User } from '@/lib/data';
 
-export async function updateUserProfile(userId: string, formData: FormData) {
-  const name = formData.get('name') as string;
-  const image = formData.get('image') as string | null;
-
+export async function updateUserProfileUrl(userId: string, name: string, photoURL: string | null) {
   if (!userId) {
     throw new Error('You must be logged in to update your profile.');
   }
-
   try {
     const userDocRef = doc(db, 'users', userId);
     const updates: { displayName: string; photoURL?: string } = {
       displayName: name,
     };
-
-    let newPhotoURL: string | undefined = undefined;
-
-    if (image) {
-      const storageRef = ref(storage, `avatars/${userId}`);
-      
-      // Correctly parse the data URI to get the content type and base64 data
-      const match = image.match(/^data:(.+);base64,(.+)$/);
-      if (!match) {
-        throw new Error('Invalid image data URI');
-      }
-      
-      const contentType = match[1];
-      const base64Data = match[2];
-
-      await uploadString(storageRef, base64Data, 'base64', { contentType });
-      newPhotoURL = await getDownloadURL(storageRef);
-      updates.photoURL = newPhotoURL;
+    if (photoURL) {
+      updates.photoURL = photoURL;
     }
     
     // Update Firestore document
     await updateDoc(userDocRef, updates);
 
-    // The server action returns the new data, the client will update the auth profile.
-    return { success: true, message: 'Profile updated successfully.', photoURL: newPhotoURL };
+    return { success: true, message: 'Profile updated successfully.' };
 
   } catch (error: any) {
-    console.error('Error updating profile:', error);
+    console.error('Error updating profile URL in Firestore:', error);
     return { success: false, message: error.message };
   }
 }
+
 
 export async function searchUsers(searchTerm: string, currentUserId: string): Promise<User[]> {
   if (!searchTerm.trim()) {

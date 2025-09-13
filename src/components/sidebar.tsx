@@ -20,11 +20,12 @@ import {
 import { usePWAInstall } from './pwa-install-provider';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from './ui/tooltip';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
-import { auth } from '@/lib/firebase';
+import { auth, storage } from '@/lib/firebase';
+import { getDownloadURL, ref, uploadString } from 'firebase/storage';
 import { useRouter } from 'next/navigation';
 import { Label } from './ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { updateUserProfile, searchUsers } from '@/app/actions';
+import { updateUserProfileUrl, searchUsers } from '@/app/actions';
 import { Mood } from './mood-provider';
 import {
   ContextMenu,
@@ -117,36 +118,48 @@ const ProfileSettingsDialog = ({ user, open, setOpen }: { user: User; open: bool
 
     setLoading(true);
 
-    const formData = new FormData();
-    formData.append('name', name);
-    if (imageData) {
-      formData.append('image', imageData);
-    }
+    try {
+      let newPhotoURL: string | null = user.avatar;
 
-    const result = await updateUserProfile(currentUser.uid, formData);
+      if (imageData) {
+        const storageRef = ref(storage, `avatars/${currentUser.uid}`);
+        
+        const match = imageData.match(/^data:(.+);base64,(.+)$/);
+        if (!match) {
+          throw new Error('Invalid image data URI');
+        }
+        const contentType = match[1];
+        const base64Data = match[2];
 
-    if (result.success) {
-      // Client-side update of the auth profile
-      const authUpdates: { displayName?: string; photoURL?: string; } = { displayName: name };
-      if (result.photoURL) {
-          authUpdates.photoURL = result.photoURL;
+        await uploadString(storageRef, base64Data, 'base64', { contentType });
+        newPhotoURL = await getDownloadURL(storageRef);
       }
-      await updateProfile(currentUser, authUpdates);
+
+      // Now call the server action to update Firestore
+      const result = await updateUserProfileUrl(currentUser.uid, name, newPhotoURL);
       
-      toast({
-        title: 'Success',
-        description: result.message,
-      });
-      setOpen(false);
-    } else {
+      if (result.success) {
+        // Client-side update of the auth profile
+        await updateProfile(currentUser, { displayName: name, photoURL: newPhotoURL ?? undefined });
+        
+        toast({
+          title: 'Success',
+          description: result.message,
+        });
+        setOpen(false);
+      } else {
+        throw new Error(result.message);
+      }
+    } catch (error: any) {
+      console.error('Error updating profile:', error);
       toast({
         variant: 'destructive',
-        title: 'Error',
-        description: result.message,
+        title: 'Error updating profile',
+        description: error.message,
       });
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   return (
