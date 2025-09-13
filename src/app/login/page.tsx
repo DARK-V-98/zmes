@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { Separator } from '@/components/ui/separator';
+import { Logo } from '@/components/logo';
 
 const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg
@@ -112,69 +113,75 @@ export default function LoginPage() {
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-background p-4 sm:p-6 lg:p-8">
-      <Card className="w-full max-w-sm">
-        <CardHeader>
-          <CardTitle>Login</CardTitle>
-          <CardDescription>Enter your credentials to access your account.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="m@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-              </div>
-              <Button type="submit" className="w-full" disabled={loading || googleLoading}>
-                {loading ? 'Logging in...' : 'Login'}
-              </Button>
-            </form>
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <Separator />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">
-                  Or continue with
-                </span>
-              </div>
-            </div>
+      <div className="flex flex-col items-center gap-6">
+        <div className="flex flex-col items-center gap-2">
+            <Logo size="lg" />
+            <h1 className="text-2xl font-bold">Z Messenger</h1>
+        </div>
+        <Card className="w-full max-w-sm">
+            <CardHeader>
+            <CardTitle>Login</CardTitle>
+            <CardDescription>Enter your credentials to access your account.</CardDescription>
+            </CardHeader>
+            <CardContent>
+            <div className="space-y-4">
+                <form onSubmit={handleLogin} className="space-y-4">
+                <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                    id="email"
+                    type="email"
+                    placeholder="m@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="password">Password</Label>
+                    <Input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    />
+                </div>
+                <Button type="submit" className="w-full" disabled={loading || googleLoading}>
+                    {loading ? 'Logging in...' : 'Login'}
+                </Button>
+                </form>
+                <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                    <Separator />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">
+                    Or continue with
+                    </span>
+                </div>
+                </div>
 
-            <Button variant="outline" className="w-full" onClick={handleGoogleLogin} disabled={loading || googleLoading}>
-              {googleLoading ? (
-                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current"></div>
-              ) : (
-                <>
-                  <GoogleIcon className="mr-2" />
-                  Google
-                </>
-              )}
-            </Button>
-            <div className="text-center text-sm">
-              Don't have an account?{' '}
-              <Link href="/signup" className="underline">
-                Sign up
-              </Link>
+                <Button variant="outline" className="w-full" onClick={handleGoogleLogin} disabled={loading || googleLoading}>
+                {googleLoading ? (
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current"></div>
+                ) : (
+                    <>
+                    <GoogleIcon className="mr-2" />
+                    Google
+                    </>
+                )}
+                </Button>
+                <div className="text-center text-sm">
+                Don't have an account?{' '}
+                <Link href="/signup" className="underline">
+                    Sign up
+                </Link>
+                </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+            </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
