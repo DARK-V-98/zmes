@@ -4,6 +4,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { AuthProvider } from '@/components/auth-provider';
 import { PWAInstallProvider } from '@/components/pwa-install-provider';
 import { MoodProvider } from '@/components/mood-provider';
+import { ThemeProvider } from '@/components/theme-provider';
 
 export const metadata: Metadata = {
   title: 'Z Messenger',
@@ -28,7 +29,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
@@ -40,10 +41,16 @@ export default function RootLayout({
       <body className="font-body antialiased">
         <AuthProvider>
           <PWAInstallProvider>
-            <MoodProvider>
-              {children}
-              <Toaster />
-            </MoodProvider>
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="system"
+              enableSystem
+            >
+              <MoodProvider>
+                {children}
+                <Toaster />
+              </MoodProvider>
+            </ThemeProvider>
           </PWAInstallProvider>
         </AuthProvider>
       </body>

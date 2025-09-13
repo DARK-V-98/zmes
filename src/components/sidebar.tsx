@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { ScrollArea } from './ui/scroll-area';
-import { Search, Download, Settings, Camera, LogOut, User as UserIcon, Smile, Trash2, Share, MessageSquarePlus } from 'lucide-react';
+import { Search, Download, Settings, Camera, LogOut, User as UserIcon, Smile, Trash2, Share, MessageSquarePlus, Moon, Sun } from 'lucide-react';
 import { Input } from './ui/input';
 import {
   Dialog,
@@ -43,7 +43,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog";
+import { useTheme } from 'next-themes';
 
 interface SidebarProps {
   conversations: User[];
@@ -237,6 +238,21 @@ const MoodChanger = () => {
   );
 };
 
+const ThemeChanger = () => {
+  const { theme, setTheme } = useTheme();
+
+  return (
+    <Button 
+      variant="ghost" 
+      className="w-full justify-start" 
+      onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+    >
+      <Sun className="mr-2 h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+      <Moon className="absolute mr-2 h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+      Toggle theme
+    </Button>
+  );
+}
 
 const UserMenu = ({ user }: { user: User }) => {
     const router = useRouter();
@@ -268,6 +284,7 @@ const UserMenu = ({ user }: { user: User }) => {
                            <UserIcon className="mr-2 h-4 w-4" /> Edit Profile
                         </Button>
                         <MoodChanger />
+                        <ThemeChanger />
                         <Button variant="ghost" className="w-full justify-start" onClick={handleLogout}>
                             <LogOut className="mr-2 h-4 w-4" /> Logout
                         </Button>
@@ -472,6 +489,7 @@ export function Sidebar({ conversations, allUsers, messages, loggedInUser, selec
     user.name.toLowerCase().includes(searchTerm.toLowerCase())
   ) : conversationDetails;
 
+  const usersForNewChat = otherUsers.filter(u => !conversations.some(c => c.id === u.id));
 
   return (
     <div className="w-full md:w-1/3 md:max-w-sm lg:w-1/4 lg:max-w-md border-r flex flex-col">
@@ -490,7 +508,7 @@ export function Sidebar({ conversations, allUsers, messages, loggedInUser, selec
               </Tooltip>
             </TooltipProvider>
           )}
-           <NewChatDialog users={otherUsers.filter(u => !conversations.some(c => c.id === u.id))} onSelectUser={handleSelectNewUser} />
+           <NewChatDialog users={usersForNewChat} onSelectUser={handleSelectNewUser} />
         </div>
       </div>
        <div className="p-2 sm:p-4 border-b">

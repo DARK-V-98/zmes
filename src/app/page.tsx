@@ -18,7 +18,7 @@ export default function Home() {
     }
   }, [user, loading, router]);
 
-  if (loading || !user) {
+  if (loading) {
     return (
       <main className="h-screen bg-background text-foreground flex items-center justify-center">
         <div className="animate-pulse">
@@ -33,6 +33,11 @@ export default function Home() {
         </div>
       </main>
     );
+  }
+
+  if (!user) {
+    // This state will be brief before the redirect, but prevents rendering ZMessenger with a null user
+    return null;
   }
   
   const loggedInUser: User = {

@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 @layer base {
-  :root, .theme-blue {
+  :root, .light {
     --background: 210 17% 95%;
     --foreground: 210 10% 23%;
     --card: 0 0% 100%;
@@ -31,7 +31,7 @@
     --radius: 0.75rem;
   }
 
-  .dark, .theme-sad {
+  .dark {
     --background: 210 10% 12%;
     --foreground: 0 0% 98%;
     --card: 210 10% 15%;
@@ -56,6 +56,50 @@
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
+  }
+
+  .theme-blue {
+    --background: 210 17% 95%;
+    --foreground: 210 10% 23%;
+    --card: 0 0% 100%;
+    --card-foreground: 210 10% 23%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 210 10% 23%;
+    --primary: 207 70% 53%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 210 16% 90%;
+    --secondary-foreground: 210 10% 23%;
+    --muted: 210 16% 90%;
+    --muted-foreground: 210 10% 45%;
+    --accent: 145 63% 49%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 210 15% 88%;
+    --input: 210 15% 88%;
+    --ring: 207 70% 53%;
+  }
+
+  .theme-sad {
+    --background: 210 10% 12%;
+    --foreground: 0 0% 98%;
+    --card: 210 10% 15%;
+    --card-foreground: 0 0% 98%;
+    --popover: 210 10% 12%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 207 70% 53%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 210 10% 20%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 210 10% 20%;
+    --muted-foreground: 210 10% 65%;
+    --accent: 145 63% 49%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 210 10% 25%;
+    --input: 210 10% 25%;
+    --ring: 207 70% 53%;
   }
 
   .theme-angry {
