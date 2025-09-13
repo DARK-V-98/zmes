@@ -197,7 +197,7 @@ const NewChatDialog = ({ loggedInUser, onSelectUser, allUsers }: { loggedInUser:
             const data = doc.data();
             users.push({
                 id: doc.id,
-                name: data.displayName,
+                name: data.displayName || 'No Name',
                 avatar: data.photoURL,
                 email: data.email,
                 role: data.role,

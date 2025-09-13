@@ -91,7 +91,7 @@ export async function searchUsers(searchTerm: string, currentUserId: string): Pr
         const data = doc.data();
         users.push({
           id: doc.id,
-          name: data.displayName,
+          name: data.displayName || 'No Name',
           avatar: data.photoURL,
           email: data.email,
         });
