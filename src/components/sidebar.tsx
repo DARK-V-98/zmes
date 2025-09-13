@@ -53,6 +53,7 @@ interface SidebarProps {
   onSelectUser: (user: User) => void;
   onClearHistory: (userId: string) => void;
   messages: Message[];
+  allUsers: User[];
 }
 
 const IOSInstallInstructions = ({ open, onOpenChange }: { open: boolean, onOpenChange: (open: boolean) => void }) => (
@@ -280,7 +281,7 @@ const UserMenu = ({ user }: { user: User }) => {
     );
 };
 
-const NewChatDialog = ({ loggedInUser, onSelectUser, existingConversationUsers }: { loggedInUser: User, onSelectUser: (user: User) => void, existingConversationUsers: User[] }) => {
+const NewChatDialog = ({ loggedInUser, onSelectUser, users }: { loggedInUser: User, onSelectUser: (user: User) => void, users: User[] }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [searchResults, setSearchResults] = useState<User[]>([]);
@@ -292,12 +293,7 @@ const NewChatDialog = ({ loggedInUser, onSelectUser, existingConversationUsers }
     setLoading(true);
     setSearched(true);
     const results = await searchUsers(search, loggedInUser.id);
-    
-    // Filter out users who are already in an existing conversation
-    const existingIds = new Set(existingConversationUsers.map(u => u.id));
-    const finalResults = results.filter(u => !existingIds.has(u.id));
-
-    setSearchResults(finalResults);
+    setSearchResults(results);
     setLoading(false);
   };
 
@@ -460,7 +456,7 @@ const ConversationItem = ({
 };
 
 
-export function Sidebar({ conversations, loggedInUser, selectedUser, onSelectUser, onClearHistory, messages }: SidebarProps) {
+export function Sidebar({ conversations, loggedInUser, selectedUser, onSelectUser, onClearHistory, messages, allUsers }: SidebarProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const { canInstall, install } = usePWAInstall();
   const [isInstallSheetOpen, setIsInstallSheetOpen] = useState(false);
@@ -503,6 +499,8 @@ export function Sidebar({ conversations, loggedInUser, selectedUser, onSelectUse
     user.name.toLowerCase().includes(searchTerm.toLowerCase())
   ) : conversationDetails;
 
+  const usersForNewChat = allUsers.filter(u => u.id !== loggedInUser.id && !conversations.some(c => c.id === u.id));
+
   return (
     <div className="w-full md:w-1/3 md:max-w-sm lg:w-1/4 lg:max-w-md border-r flex flex-col">
       <div className="p-2 sm:p-4 border-b flex justify-between items-center">
@@ -523,7 +521,7 @@ export function Sidebar({ conversations, loggedInUser, selectedUser, onSelectUse
               </Tooltip>
             </TooltipProvider>
           )}
-           <NewChatDialog loggedInUser={loggedInUser} onSelectUser={handleSelectNewUser} existingConversationUsers={conversations} />
+           <NewChatDialog loggedInUser={loggedInUser} onSelectUser={handleSelectNewUser} users={usersForNewChat} />
         </div>
       </div>
        <div className="p-2 sm:p-4 border-b">
