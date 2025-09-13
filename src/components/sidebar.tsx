@@ -313,12 +313,12 @@ const NewChatDialog = ({ users, onSelectUser }: { users: User[], onSelectUser: (
         <DialogHeader>
           <DialogTitle>Start a new chat</DialogTitle>
           <DialogDescription>
-            Search for a user by name or email to start a conversation.
+            Search for a user by name to start a conversation.
           </DialogDescription>
         </DialogHeader>
         <div className="py-2">
           <Input 
-            placeholder="Search by name or email..."
+            placeholder="Search by name..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -419,7 +419,7 @@ const ConversationItem = ({
           <AlertDialogTitle>Are you sure?</AlertDialogTitle>
           <AlertDialogDescription>
             This will delete the chat history for you only. The other person will still see the messages. This action cannot be undone.
-          </AlertDialogDescription>
+          </DialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
