@@ -6,7 +6,7 @@ import type { Message, User } from '@/lib/data';
 import { Sidebar } from '@/components/sidebar';
 import { ChatHeader, ChatMessages, ChatInput } from '@/components/chat';
 import { Card } from '@/components/ui/card';
-import { db } from '@/lib/firebase';
+import { db, storage } from '@/lib/firebase';
 import {
   collection,
   query,
@@ -26,11 +26,12 @@ import {
   getDocs,
   deleteDoc,
 } from 'firebase/firestore';
+import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import { useAuth } from './auth-provider';
 import { CallView, type Call } from './call-view';
 import { hangUp, answerCall, startCall } from '@/lib/webrtc';
-import { updateMessage, deleteMessage, uploadChatFile } from '@/app/actions';
+import { updateMessage, deleteMessage } from '@/app/actions';
 import type { Mood } from './mood-provider';
 import { useToast } from '@/hooks/use-toast';
 
@@ -308,7 +309,18 @@ export function ZMessenger() {
         reader.onload = async () => {
             const fileDataUri = reader.result as string;
             const conversationId = getConversationId(loggedInUser.id, selectedUser.id);
-            const downloadURL = await uploadChatFile(conversationId, fileDataUri, file.name);
+            
+            // Client-side upload logic
+            const match = fileDataUri.match(/^data:(.+);base64,(.+)$/);
+            if (!match) {
+                throw new Error('Invalid file data URI');
+            }
+            const contentType = match[1];
+            const base64Data = match[2];
+
+            const fileRef = ref(storage, `chat_media/${conversationId}/${file.name}`);
+            await uploadString(fileRef, base64Data, 'base64', { contentType });
+            const downloadURL = await getDownloadURL(fileRef);
 
             await addDoc(collection(db, 'messages'), {
                 conversationId,
@@ -330,7 +342,7 @@ export function ZMessenger() {
         toast({
             variant: 'destructive',
             title: 'Upload failed',
-            description: 'There was a problem uploading your file.',
+            description: 'There was a problem uploading your file. Please check permissions.',
         });
     }
   };

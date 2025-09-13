@@ -29,21 +29,6 @@ export async function updateUserProfileUrl(userId: string, name: string, photoUR
   }
 }
 
-export async function uploadChatFile(conversationId: string, fileDataUri: string, fileName: string): Promise<string> {
-    const match = fileDataUri.match(/^data:(.+);base64,(.+)$/);
-    if (!match) {
-        throw new Error('Invalid file data URI');
-    }
-    const contentType = match[1];
-    const base64Data = match[2];
-
-    const fileRef = ref(storage, `chat_media/${conversationId}/${fileName}`);
-    await uploadString(fileRef, base64Data, 'base64', { contentType });
-    const downloadURL = await getDownloadURL(fileRef);
-    return downloadURL;
-}
-
-
 export async function searchUsers(searchTerm: string, currentUserId: string): Promise<User[]> {
   if (!searchTerm.trim()) {
     return [];
