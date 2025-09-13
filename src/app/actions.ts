@@ -13,41 +13,25 @@ export async function updateUserProfile(userId: string, updates: Partial<User>) 
   try {
     const userDocRef = doc(db, 'users', userId);
     
-    // Handle cover photo upload
-    if (updates.coverPhotoURL && updates.coverPhotoURL.startsWith('data:image')) {
-      const storageRef = ref(storage, `cover_photos/${userId}`);
-      const match = updates.coverPhotoURL.match(/^data:(.+);base64,(.+)$/);
-        if (!match) {
-          throw new Error('Invalid image data URI');
-        }
-      const contentType = match[1];
-      await uploadString(storageRef, updates.coverPhotoURL, 'data_url', { contentType });
-      updates.coverPhotoURL = await getDownloadURL(storageRef);
-    }
-    
-    // Handle profile photo upload
-    if (updates.avatar && updates.avatar.startsWith('data:image')) {
-      const storageRef = ref(storage, `avatars/${userId}`);
-       const match = updates.avatar.match(/^data:(.+);base64,(.+)$/);
-        if (!match) {
-          throw new Error('Invalid image data URI');
-        }
-      const contentType = match[1];
-      await uploadString(storageRef, updates.avatar, 'data_url', { contentType });
-      updates.avatar = await getDownloadURL(storageRef);
-    }
-    
+    // Create a new object for Firestore updates to avoid mutating the original 'updates' object.
+    const firestoreUpdates: { [key: string]: any } = { ...updates };
+
     // Rename name to displayName for firestore
-    if('name' in updates){
-        (updates as any).displayName = updates.name;
-        delete updates.name;
+    if('name' in firestoreUpdates){
+        firestoreUpdates.displayName = firestoreUpdates.name;
+        delete firestoreUpdates.name;
     }
-     if('avatar' in updates){
-        (updates as any).photoURL = updates.avatar;
-        delete updates.avatar;
+     if('avatar' in firestoreUpdates){
+        firestoreUpdates.photoURL = firestoreUpdates.avatar;
+        delete firestoreUpdates.avatar;
     }
 
-    await updateDoc(userDocRef, updates);
+    // Cover photo URL is already a public URL from the client-side upload
+    if (updates.coverPhotoURL) {
+      firestoreUpdates.coverPhotoURL = updates.coverPhotoURL;
+    }
+
+    await updateDoc(userDocRef, firestoreUpdates);
 
     return { success: true, message: 'Profile updated successfully.' };
 

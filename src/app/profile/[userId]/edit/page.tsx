@@ -3,8 +3,9 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { doc, getDoc, onSnapshot } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { db, storage } from '@/lib/firebase';
+import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import type { User } from '@/lib/data';
 import { useAuth } from '@/components/auth-provider';
 import { Button } from '@/components/ui/button';
@@ -18,6 +19,19 @@ import { ArrowLeft, Camera, Facebook, Instagram, Link as LinkIcon, PlusCircle, T
 import Image from 'next/image';
 
 type SocialLink = { type: 'facebook' | 'instagram' | 'twitter' | 'website'; url: string };
+
+// Helper function to upload an image and get the URL
+const uploadImage = async (fileDataUrl: string, path: string): Promise<string> => {
+    const storageRef = ref(storage, path);
+    const match = fileDataUrl.match(/^data:(.+);base64,(.+)$/);
+    if (!match) {
+        throw new Error('Invalid image data URI');
+    }
+    const contentType = match[1];
+    await uploadString(storageRef, fileDataUrl, 'data_url', { contentType });
+    return getDownloadURL(storageRef);
+};
+
 
 export default function EditProfilePage() {
     const params = useParams();
@@ -112,22 +126,29 @@ export default function EditProfilePage() {
         e.preventDefault();
         if (!user) return;
         setLoading(true);
-
-        const updates: Partial<User> = {};
-        if (name !== user.name) updates.name = name;
-        if (phoneNumber !== user.phoneNumber) updates.phoneNumber = phoneNumber;
-        // This is a simplified check. A deep comparison might be needed for more complex scenarios.
-        if (JSON.stringify(socialLinks) !== JSON.stringify(user.socialLinks)) updates.socialLinks = socialLinks;
-        if (profileImageData) updates.avatar = profileImageData;
-        if (coverImageData) updates.coverPhotoURL = coverImageData;
         
-        if (Object.keys(updates).length === 0) {
-            toast({ title: 'No changes to save.' });
-            setLoading(false);
-            return;
-        }
-
         try {
+            const updates: Partial<User> = {};
+
+            // Upload images first and get URLs
+            if (profileImageData) {
+                updates.avatar = await uploadImage(profileImageData, `avatars/${user.id}`);
+            }
+            if (coverImageData) {
+                updates.coverPhotoURL = await uploadImage(coverImageData, `cover_photos/${user.id}`);
+            }
+
+            // Prepare other text-based updates
+            if (name !== user.name) updates.name = name;
+            if (phoneNumber !== user.phoneNumber) updates.phoneNumber = phoneNumber;
+            if (JSON.stringify(socialLinks) !== JSON.stringify(user.socialLinks || [])) updates.socialLinks = socialLinks;
+            
+            if (Object.keys(updates).length === 0) {
+                toast({ title: 'No changes to save.' });
+                setLoading(false);
+                return;
+            }
+
             const result = await updateUserProfile(user.id, updates);
             if (result.success) {
                 toast({ title: 'Success', description: 'Profile updated successfully.' });
