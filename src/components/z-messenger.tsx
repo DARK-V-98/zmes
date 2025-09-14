@@ -37,6 +37,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useChatSelection } from './chat-selection-provider';
 import { suggestReplies } from '@/ai/flows/smart-reply-flow';
 import { extractLinkMetadata } from '@/ai/flows/extract-link-metadata-flow';
+import { useSound } from '@/hooks/use-sound';
+import { useDocumentVisibility } from '@/hooks/use-document-visibility';
 
 const getConversationId = (userId1: string, userId2: string) => {
   return [userId1, userId2].sort().join('_');
@@ -72,6 +74,8 @@ export function ZMessenger() {
   const [localStreamState, setLocalStreamState] = useState<MediaStream | null>(null);
   const [remoteStreamState, setRemoteStreamState] = useState<MediaStream | null>(null);
   const { toast } = useToast();
+  const playNotificationSound = useSound('/notification.mp3');
+  const isDocumentVisible = useDocumentVisibility();
 
   // Handle globally selected user from profile page
   useEffect(() => {
@@ -161,7 +165,7 @@ export function ZMessenger() {
       }
   }, [allUsers, selectedUser]);
 
-  // Fetch all messages for the logged-in user
+  // Fetch all messages for the logged-in user and handle notifications
   useEffect(() => {
     if (!loggedInUser?.id) return;
 
@@ -183,10 +187,40 @@ export function ZMessenger() {
         } as Message;
       });
       setMessages(allMessages);
+
+      // --- Notification Logic ---
+      snapshot.docChanges().forEach(change => {
+        if (change.type === 'added') {
+            const newMessageData = change.doc.data();
+            const newMessage: Message = {
+                id: change.doc.id,
+                ...newMessageData,
+                timestamp: (newMessageData.timestamp as Timestamp)?.toDate() ?? new Date(),
+            } as Message;
+
+            const senderId = newMessage.senderId;
+
+            // Don't notify for own messages
+            if (senderId === loggedInUser.id) return;
+
+            // Notify if chat is not open or tab is not visible
+            const isChatOpen = selectedUser?.id === senderId;
+            if (!isChatOpen || !isDocumentVisible) {
+                const sender = allUsers.find(u => u.id === senderId);
+                if (sender) {
+                    playNotificationSound();
+                    toast({
+                        title: `New message from ${sender.name}`,
+                        description: newMessage.content,
+                    });
+                }
+            }
+        }
+      });
     });
 
     return () => unsubscribeMessages();
-  }, [loggedInUser?.id]);
+  }, [loggedInUser?.id, selectedUser?.id, allUsers, isDocumentVisible, playNotificationSound, toast]);
 
 
   // Derive conversation list from messages and users
