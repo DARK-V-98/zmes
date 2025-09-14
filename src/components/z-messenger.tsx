@@ -39,6 +39,8 @@ import { suggestReplies } from '@/ai/flows/smart-reply-flow';
 import { extractLinkMetadata } from '@/ai/flows/extract-link-metadata-flow';
 import { useSound } from '@/hooks/use-sound';
 import { useDocumentVisibility } from '@/hooks/use-document-visibility';
+import { registerForPushNotifications } from '@/lib/notifications';
+import { sendPushNotification } from '@/app/actions-push';
 
 const getConversationId = (userId1: string, userId2: string) => {
   return [userId1, userId2].sort().join('_');
@@ -76,6 +78,13 @@ export function ZMessenger() {
   const { toast } = useToast();
   const playNotificationSound = useSound('/notification.mp3');
   const isDocumentVisible = useDocumentVisibility();
+
+  // Register for push notifications
+  useEffect(() => {
+    if (loggedInUser?.id) {
+      registerForPushNotifications(loggedInUser.id);
+    }
+  }, [loggedInUser?.id]);
 
   // Handle globally selected user from profile page
   useEffect(() => {
@@ -450,6 +459,20 @@ export function ZMessenger() {
         ...filePayload,
         ...linkPreviewPayload,
       });
+
+      // Send Push Notification
+      const recipient = allUsers.find(u => u.id === selectedUser.id);
+      if (recipient?.fcmTokens && recipient.fcmTokens.length > 0) {
+        recipient.fcmTokens.forEach(token => {
+            sendPushNotification({
+                token,
+                title: loggedInUser.name,
+                body: content || 'Sent an attachment',
+                senderAvatar: loggedInUser.avatar,
+            });
+        });
+      }
+
     } catch (error) {
        console.error("Error sending message:", error);
        toast({

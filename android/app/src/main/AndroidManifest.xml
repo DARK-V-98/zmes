@@ -38,4 +38,6 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Permissions for Push Notifications -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 </manifest>

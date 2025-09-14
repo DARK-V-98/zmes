@@ -9,6 +9,7 @@ export type User = {
   phoneNumber?: string;
   socialLinks?: { type: 'facebook' | 'instagram' | 'twitter' | 'website'; url: string }[];
   role?: 'user' | 'developer';
+  fcmTokens?: string[];
 };
 
 export type LinkPreview = {
