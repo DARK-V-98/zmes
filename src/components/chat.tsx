@@ -516,16 +516,12 @@ export const ChatInput = ({
     onTyping, 
     editingMessage, 
     onCancelEdit,
-    smartReplies,
-    isGeneratingReplies
 }: { 
     onSendMessage: (content: string, file?: File) => void;
     onUpdateMessage: (messageId: string, newContent: string) => void;
     onTyping: (isTyping: boolean) => void;
     editingMessage: Message | null;
     onCancelEdit: () => void;
-    smartReplies: string[];
-    isGeneratingReplies: boolean;
 }) => {
   const [message, setMessage] = useState('');
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
@@ -606,29 +602,9 @@ export const ChatInput = ({
       setAttachedFile(null);
       setFilePreview(null);
   }
-  
-  const handleSmartReplyClick = (reply: string) => {
-    onSendMessage(reply);
-  };
 
   return (
     <div className="p-2 sm:p-4 border-t bg-card">
-       {(smartReplies.length > 0 || isGeneratingReplies) && (
-        <div className="flex items-center gap-2 mb-2 px-1">
-          {isGeneratingReplies ? (
-            <div className="flex items-center text-sm text-muted-foreground">
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              <span>Generating replies...</span>
-            </div>
-          ) : (
-            smartReplies.map((reply, index) => (
-              <Button key={index} variant="outline" size="sm" className="rounded-full" onClick={() => handleSmartReplyClick(reply)}>
-                {reply}
-              </Button>
-            ))
-          )}
-        </div>
-      )}
       {editingMessage && (
           <div className="flex items-center justify-between bg-secondary p-2 rounded-t-md">
               <div>

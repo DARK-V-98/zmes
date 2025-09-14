@@ -35,7 +35,6 @@ import { updateMessage, deleteMessage } from '@/app/actions';
 import type { Mood } from './mood-provider';
 import { useToast } from '@/hooks/use-toast';
 import { useChatSelection } from './chat-selection-provider';
-import { suggestReplies } from '@/ai/flows/smart-reply-flow';
 import { extractLinkMetadata } from '@/ai/flows/extract-link-metadata-flow';
 import { useSound } from '@/hooks/use-sound';
 import { useDocumentVisibility } from '@/hooks/use-document-visibility';
@@ -65,8 +64,6 @@ export function ZMessenger() {
   const [conversationMood, setConversationMood] = useState<Mood>('happy');
   const [selectedMessages, setSelectedMessages] = useState<string[]>([]);
   const { selectedUser: globallySelectedUser, selectUser: setGloballySelectedUser } = useChatSelection();
-  const [smartReplies, setSmartReplies] = useState<string[]>([]);
-  const [isGeneratingReplies, setIsGeneratingReplies] = useState(false);
 
 
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
@@ -363,44 +360,9 @@ export function ZMessenger() {
     return messages.filter(m => m.conversationId === getConversationId(loggedInUser.id, selectedUser.id));
   }, [selectedUser, messages, loggedInUser]);
 
-  // Generate Smart Replies
-  useEffect(() => {
-    if (!selectedUser || !loggedInUser || currentChatMessages.length === 0) {
-      setSmartReplies([]);
-      return;
-    }
-
-    const lastMessage = currentChatMessages[currentChatMessages.length - 1];
-    // Only generate replies if the last message is from the other user and is not a file
-    if (lastMessage.senderId === selectedUser.id && !lastMessage.fileURL) {
-      setIsGeneratingReplies(true);
-      setSmartReplies([]);
-      const history = currentChatMessages.slice(-5).map(m => ({
-        author: m.senderId === loggedInUser.id ? 'user' : 'other',
-        content: m.content
-      }));
-      
-      suggestReplies({ conversationHistory: history })
-        .then(response => {
-          setSmartReplies(response.replies || []);
-        })
-        .catch(error => {
-          console.error("Error generating smart replies:", error);
-          setSmartReplies([]);
-        })
-        .finally(() => {
-          setIsGeneratingReplies(false);
-        });
-    } else {
-      setSmartReplies([]);
-    }
-  }, [currentChatMessages, selectedUser, loggedInUser]);
-
   const handleSendMessage = async (content: string, file?: File) => {
     if ((!content.trim() && !file) || !selectedUser || !loggedInUser) return;
     
-    setSmartReplies([]);
-
     try {
       let filePayload: Partial<Message> = {};
       let linkPreviewPayload: Partial<Message> = {};
@@ -567,7 +529,6 @@ export function ZMessenger() {
     }
     setSelectedUser(user);
     setSelectedMessages([]); // Clear selection when switching chats
-    setSmartReplies([]); // Clear smart replies
   };
   
   const handleStartCall = async (userToCall: User, type: 'audio' | 'video') => {
@@ -743,8 +704,6 @@ export function ZMessenger() {
                     onTyping={handleTyping} 
                     editingMessage={editingMessage}
                     onCancelEdit={handleCancelEdit}
-                    smartReplies={smartReplies}
-                    isGeneratingReplies={isGeneratingReplies}
                 />
               </>
             ) : (
