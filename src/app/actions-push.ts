@@ -1,16 +1,20 @@
 
 'use server';
 import * as admin from 'firebase-admin';
+import { credential } from 'firebase-admin';
 
 // Initialize Firebase Admin SDK if not already initialized
 if (!admin.apps.length) {
-  // If you have a service account key file, you can use it like this:
-  // const serviceAccount = require('./path/to/your/serviceAccountKey.json');
-  // admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
-  
-  // For environments like Google Cloud Functions or Cloud Run, the SDK
-  // can often auto-discover credentials.
-  admin.initializeApp();
+  try {
+    // Try to initialize with default application credentials
+    admin.initializeApp({
+      credential: credential.applicationDefault(),
+    });
+  } catch (error) {
+    console.error('Firebase Admin initialization failed:', error);
+    // You might want to log this error to a monitoring service
+    // In a local dev environment, this might fail if GOOGLE_APPLICATION_CREDENTIALS is not set.
+  }
 }
 
 interface SendPushNotificationParams {
@@ -21,6 +25,11 @@ interface SendPushNotificationParams {
 }
 
 export async function sendPushNotification({ token, title, body, senderAvatar }: SendPushNotificationParams) {
+    if (admin.apps.length === 0) {
+        console.error("Firebase Admin SDK not initialized. Cannot send push notification.");
+        return { success: false, message: 'Firebase Admin not initialized.' };
+    }
+    
     if (!token) {
         console.error("No device token provided for push notification.");
         return { success: false, message: 'No device token.' };
